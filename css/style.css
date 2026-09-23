@@ -1,0 +1,19 @@
+:root { --bg:#0f1720; --kart:#1b2733; --metin:#e8eef4; --vurgu:#4aa8ff; --yesil:#3ecf7a; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--metin); font-family:system-ui,sans-serif; }
+header { display:flex; align-items:center; gap:1.5rem; padding:1rem 2rem; background:var(--kart); }
+header h1 { font-size:1.2rem; }
+nav { display:flex; gap:1rem; }
+nav a { color:var(--metin); text-decoration:none; opacity:.6; }
+nav a.active, nav a:hover { opacity:1; color:var(--vurgu); }
+.saat { margin-left:auto; font-variant-numeric:tabular-nums; opacity:.8; }
+main { padding:2rem; }
+.kartlar { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+.kart { background:var(--kart); padding:1.5rem; border-radius:12px; }
+.kart h2 { font-size:.9rem; opacity:.7; font-weight:500; }
+.deger { font-size:2rem; margin-top:.5rem; color:var(--vurgu); }
+.sunucu-listesi { list-style:none; display:grid; gap:.75rem; margin-bottom:1.5rem; }
+.sunucu-listesi li { background:var(--kart); padding:1rem; border-radius:8px; display:flex; align-items:center; gap:.75rem; }
+.nokta { width:12px; height:12px; border-radius:50%; background:var(--yesil); }
+button { background:var(--vurgu); color:#001; border:none; padding:.75rem 1.25rem; border-radius:8px; font-size:1rem; cursor:pointer; }
+button:hover { opacity:.9; }
