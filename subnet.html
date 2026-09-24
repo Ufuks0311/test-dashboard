@@ -26,6 +26,15 @@
     .sn-kopya:hover { border-color:var(--vurgu); color:var(--vurgu); }
     .sn-kopya.ok { border-color:var(--yesil); color:var(--yesil); }
     .sn-hata { color:#f85149; padding:.7rem 0; }
+    .sn-gecmis { margin-top:1.5rem; border-top:1px solid rgba(255,255,255,.08); padding-top:1rem; }
+    .sn-gecmis-baslik { display:flex; justify-content:space-between; align-items:center; margin-bottom:.6rem; }
+    .sn-gecmis-baslik h3 { font-size:.95rem; font-weight:600; }
+    .sn-temizle { background:transparent; border:1px solid rgba(255,255,255,.15); color:#8b949e; border-radius:6px; padding:.25rem .6rem; font-size:.75rem; cursor:pointer; }
+    .sn-temizle:hover { border-color:#f85149; color:#f85149; }
+    .sn-kayit { display:flex; justify-content:space-between; gap:.75rem; padding:.5rem .6rem; border-radius:6px; cursor:pointer; font-family:ui-monospace,Menlo,monospace; font-size:.85rem; }
+    .sn-kayit:hover { background:rgba(255,255,255,.05); }
+    .sn-kayit .zaman { color:#8b949e; font-family:system-ui,sans-serif; font-size:.75rem; }
+    .sn-bos { color:#8b949e; font-size:.85rem; }
   </style>
 </head>
 <body>
@@ -49,6 +58,13 @@
       </div>
       <div id="rozet"></div>
       <div id="sonuc"></div>
+      <div class="sn-gecmis">
+        <div class="sn-gecmis-baslik">
+          <h3>Hesaplama Geçmişi</h3>
+          <button class="sn-temizle" id="gecmisTemizle">Temizle</button>
+        </div>
+        <div id="gecmis"></div>
+      </div>
     </div>
   </main>
   <script src="js/app.js"></script>
@@ -139,8 +155,57 @@
       });
     });
   }
-  document.getElementById('hesapla').addEventListener('click', hesapla);
-  document.getElementById('ip').addEventListener('keydown', e => { if (e.key === 'Enter') hesapla(); });
+  // ---- Geçmiş (tarayıcı veritabanı: localStorage) ----
+  const GECMIS_ANAHTAR = 'subnetGecmis';
+  const GECMIS_LIMIT = 20;
+
+  function gecmisOku() {
+    try { return JSON.parse(localStorage.getItem(GECMIS_ANAHTAR)) || []; }
+    catch (e) { return []; }
+  }
+  function gecmisYaz(liste) {
+    try { localStorage.setItem(GECMIS_ANAHTAR, JSON.stringify(liste)); } catch (e) {}
+  }
+  function gecmiseEkle() {
+    const ipMetin = document.getElementById('ip').value.trim();
+    const prefix = parseInt(document.getElementById('prefix').value, 10);
+    const ip = ipToInt(ipMetin);
+    if (ip === null) return; // geçersiz IP kaydedilmez
+    const mask = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    const ag = intToIp((ip & mask) >>> 0) + '/' + prefix;
+    let liste = gecmisOku();
+    // aynı IP/prefix zaten en üstteyse tekrar ekleme
+    if (liste.length && liste[0].ip === ipMetin && liste[0].prefix === prefix) return;
+    liste.unshift({ ip: ipMetin, prefix: prefix, ag: ag, zaman: new Date().toISOString() });
+    gecmisYaz(liste.slice(0, GECMIS_LIMIT));
+    gecmisGoster();
+  }
+  function gecmisGoster() {
+    const kutu = document.getElementById('gecmis');
+    const liste = gecmisOku();
+    if (!liste.length) { kutu.innerHTML = '<p class="sn-bos">Henüz kayıt yok.</p>'; return; }
+    kutu.innerHTML = liste.map((k, i) =>
+      '<div class="sn-kayit" data-i="'+i+'"><span>'+k.ip+'/'+k.prefix+' → '+k.ag+'</span>'
+      + '<span class="zaman">'+new Date(k.zaman).toLocaleString('tr-TR')+'</span></div>'
+    ).join('');
+    kutu.querySelectorAll('.sn-kayit').forEach(el => {
+      el.addEventListener('click', () => {
+        const k = gecmisOku()[parseInt(el.getAttribute('data-i'), 10)];
+        if (!k) return;
+        document.getElementById('ip').value = k.ip;
+        document.getElementById('prefix').value = k.prefix;
+        hesapla();
+      });
+    });
+  }
+  document.getElementById('gecmisTemizle').addEventListener('click', () => {
+    if (confirm('Tüm hesaplama geçmişi silinsin mi?')) { gecmisYaz([]); gecmisGoster(); }
+  });
+
+  function hesaplaVeKaydet() { hesapla(); gecmiseEkle(); }
+  document.getElementById('hesapla').addEventListener('click', hesaplaVeKaydet);
+  document.getElementById('ip').addEventListener('keydown', e => { if (e.key === 'Enter') hesaplaVeKaydet(); });
+  gecmisGoster();
   hesapla();
   </script>
 </body>
