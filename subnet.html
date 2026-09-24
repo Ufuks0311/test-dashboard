@@ -153,7 +153,10 @@
           const eski = btn.textContent;
           btn.textContent = 'kopyalandı'; btn.classList.add('ok');
           setTimeout(() => { btn.textContent = eski; btn.classList.remove('ok'); }, 1200);
-        }).catch(() => { btn.textContent = 'hata'; });
+        }).catch(err => {
+          if (window.logYaz) logYaz('Kopyalama başarısız', metin + ' (tarayıcı panoya erişime izin vermedi)');
+          btn.textContent = 'hata';
+        });
       });
     });
   }
@@ -209,7 +212,10 @@
     } catch (e) { console.error('Kayıt eklenemedi:', e); }
   }
   document.getElementById('gecmisTemizle').addEventListener('click', async () => {
-    if (!confirm('Tüm hesaplama geçmişi silinsin mi? (Bu işlem herkes için siler)')) return;
+    if (!confirm('Tüm hesaplama geçmişi silinsin mi? (Bu işlem herkes için siler)')) {
+      if (window.logYaz) logYaz('Buton tıklandı', 'Temizle (vazgeçildi)');
+      return;
+    }
     try {
       const r = await fetch(SB_URL + '?id=gt.0', { method: 'DELETE', headers: SB_BASLIK });
       if (!r.ok) throw new Error('HTTP ' + r.status);

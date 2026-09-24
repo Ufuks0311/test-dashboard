@@ -23,4 +23,23 @@
   };
 
   window.logYaz('Sayfa görüntülendi');
+
+  // ---- Genel düğme kaydı: sayfadaki TÜM düğme tıklamaları otomatik loglanır ----
+  // Kendi detaylı kaydını atan düğmeler burada atlanır (çift kayıt olmasın diye)
+  const OZEL_KAYITLI = ['yenile', 'hesapla', 'gecmisTemizle', 'csvBtn'];
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest && e.target.closest('button');
+    if (!btn) return;
+    if (OZEL_KAYITLI.indexOf(btn.id) !== -1 || btn.classList.contains('sn-kopya')) return;
+    const ad = (btn.getAttribute('aria-label') || btn.textContent || btn.id || 'isimsiz düğme').trim().replace(/\s+/g, ' ');
+    window.logYaz('Buton tıklandı', ad);
+  }, true);
+
+  // Açma/kapama kutucukları (ör. otomatik yenileme)
+  document.addEventListener('change', function (e) {
+    const t = e.target;
+    if (!t.matches || !t.matches('input[type=checkbox]')) return;
+    const etiket = ((t.closest('label') && t.closest('label').textContent) || t.id || 'ayar').trim();
+    window.logYaz('Ayar değiştirildi', etiket + ': ' + (t.checked ? 'açık' : 'kapalı'));
+  }, true);
 })();
