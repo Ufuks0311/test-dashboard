@@ -24,8 +24,9 @@
       <div class="kart"><h2>Ağ Trafiği</h2><p class="deger">2.4 Gb/s</p></div>
       <div class="kart"><h2>Wi-Fi freknası</h2><p class="deger">5 Ghz</p></div>
     </section>
-    <button id="yenile" onclick="location.reload()">Durumu Yenile</button>
+    <button id="yenile" onclick="Promise.resolve(window.logYaz && logYaz('Durum yenilendi', 'Genel bakış sayfası yeniden yüklendi')).finally(() => location.reload())">Durumu Yenile</button>
   </main>
+  <script src="js/log.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

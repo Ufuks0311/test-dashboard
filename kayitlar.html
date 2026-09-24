@@ -23,11 +23,17 @@
     .lg-otomatik { font-size:.85rem; color:#8b949e; display:flex; gap:.35rem; align-items:center; cursor:pointer; }
     .lg-tablo-kap { overflow-x:auto; background:var(--kart); border-radius:12px; }
     .lg-tablo { width:100%; border-collapse:collapse; font-size:.9rem; }
-    .lg-tablo th, .lg-tablo td { padding:.7rem 1rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); white-space:nowrap; }
-    .lg-tablo th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; cursor:pointer; user-select:none; }
+    .lg-tablo th, .lg-tablo td { padding:.7rem 1rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); }
+    .lg-tablo th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; }
     .lg-tablo th:hover, .lg-tablo th.aktif { color:var(--metin); }
-    .lg-tablo td.mono { font-family:ui-monospace,Menlo,monospace; }
+    .lg-tablo td.zaman { white-space:nowrap; color:#c9d1d9; }
+    .lg-tablo td.detay { font-family:ui-monospace,Menlo,monospace; font-size:.85rem; color:#c9d1d9; word-break:break-word; }
     .lg-tablo tbody tr:hover { background:rgba(255,255,255,.03); }
+    .cip { display:inline-block; font-size:.75rem; font-weight:600; padding:.2rem .6rem; border-radius:999px; white-space:nowrap; }
+    .cip.genel-bakis { color:#4aa8ff; background:rgba(74,168,255,.12); }
+    .cip.sunucular { color:#3ecf7a; background:rgba(62,207,122,.12); }
+    .cip.subnet { color:#e3b341; background:rgba(227,179,65,.12); }
+    .cip.kayitlar { color:#bc8cff; background:rgba(188,140,255,.12); }
     .lg-bos { padding:2rem; text-align:center; color:#8b949e; }
     .lg-hata { padding:2rem; text-align:center; color:#f85149; }
     .lg-sayfa { display:flex; gap:.75rem; align-items:center; justify-content:flex-end; margin-top:.75rem; }
@@ -46,14 +52,31 @@
   </header>
   <main>
     <section class="lg-ozet">
-      <div class="kart"><h2>Toplam Kayıt</h2><p class="deger" id="stToplam">–</p></div>
+      <div class="kart"><h2>Toplam Olay</h2><p class="deger" id="stToplam">–</p></div>
       <div class="kart"><h2>Bugün</h2><p class="deger" id="stBugun">–</p></div>
-      <div class="kart"><h2>Son Kayıt</h2><p class="deger kucuk" id="stSon">–</p></div>
+      <div class="kart"><h2>Son Olay</h2><p class="deger kucuk" id="stSon">–</p></div>
     </section>
 
     <div class="lg-filtre">
-      <div class="lg-alan"><label for="fIp">IP adresi (içerir)</label><input id="fIp" type="text" placeholder="ör. 192.168" size="16"></div>
-      <div class="lg-alan"><label for="fPrefix">Prefix</label><select id="fPrefix"></select></div>
+      <div class="lg-alan"><label for="fSayfa">Sekme</label>
+        <select id="fSayfa">
+          <option value="">Tümü</option>
+          <option value="genel-bakis">Genel Bakış</option>
+          <option value="sunucular">Sunucular</option>
+          <option value="subnet">Subnet Hesaplama</option>
+          <option value="kayitlar">Kayıtlar</option>
+        </select></div>
+      <div class="lg-alan"><label for="fOlay">Olay</label>
+        <select id="fOlay">
+          <option value="">Tümü</option>
+          <option>Sayfa görüntülendi</option>
+          <option>Durum yenilendi</option>
+          <option>Hesaplama</option>
+          <option>Değer kopyalandı</option>
+          <option>Geçmiş temizlendi</option>
+          <option>CSV indirildi</option>
+        </select></div>
+      <div class="lg-alan"><label for="fDetay">Detay (içerir)</label><input id="fDetay" type="text" placeholder="ör. 192.168 veya web-01" size="18"></div>
       <div class="lg-alan"><label for="fBas">Başlangıç</label><input id="fBas" type="date"></div>
       <div class="lg-alan"><label for="fBit">Bitiş</label><input id="fBit" type="date"></div>
       <button class="lg-btn" id="uygula">Filtrele</button>
@@ -73,9 +96,9 @@
       <table class="lg-tablo">
         <thead><tr>
           <th data-alan="created_at">Zaman</th>
-          <th data-alan="ip">IP Adresi</th>
-          <th data-alan="prefix">Prefix</th>
-          <th data-alan="ag">Ağ Adresi</th>
+          <th data-alan="sayfa">Sekme</th>
+          <th data-alan="olay">Olay</th>
+          <th data-alan="detay">Detay</th>
         </tr></thead>
         <tbody id="govde"></tbody>
       </table>
@@ -87,19 +110,18 @@
       <button class="lg-btn ikincil" id="sonraki">Sonraki ›</button>
     </div>
   </main>
+  <script src="js/log.js"></script>
   <script src="js/app.js"></script>
   <script>
-  // ---- Supabase bağlantısı (salt okunur) ----
-  const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/subnet_gecmis';
+  // ---- Supabase bağlantısı (salt okunur görüntüleme) ----
+  const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/olay_log';
   const KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
   const SAYFA_BOYU = 25;
+  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama', 'kayitlar': 'Kayıtlar' };
   let sayfa = 0, toplam = 0, siralaAlan = 'created_at', artan = false, otoZamanlayici = null;
 
   const $ = id => document.getElementById(id);
   const basliklar = (ek) => Object.assign({ apikey: KEY }, ek || {});
-
-  $('fPrefix').innerHTML = '<option value="">Tümü</option>'
-    + Array.from({ length: 33 }, (_, i) => '<option value="' + i + '">/' + i + '</option>').join('');
 
   function kacis(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -109,9 +131,10 @@
   // Filtreleri Supabase (PostgREST) sorgu parametrelerine çevir
   function filtreler() {
     const p = [];
-    const ip = $('fIp').value.replace(/[^0-9.]/g, '');
-    if (ip) p.push('ip=ilike.*' + ip + '*');
-    if ($('fPrefix').value !== '') p.push('prefix=eq.' + $('fPrefix').value);
+    if ($('fSayfa').value) p.push('sayfa=eq.' + encodeURIComponent($('fSayfa').value));
+    if ($('fOlay').value) p.push('olay=eq.' + encodeURIComponent($('fOlay').value));
+    const d = $('fDetay').value.replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü .\/:-]/g, '').trim();
+    if (d) p.push('detay=ilike.' + encodeURIComponent('*' + d + '*'));
     if ($('fBas').value) p.push('created_at=gte.' + encodeURIComponent(new Date($('fBas').value + 'T00:00:00').toISOString()));
     if ($('fBit').value) p.push('created_at=lte.' + encodeURIComponent(new Date($('fBit').value + 'T23:59:59.999').toISOString()));
     return p;
@@ -124,7 +147,7 @@
 
   async function yukle() {
     $('bilgi').textContent = 'Yükleniyor…';
-    const url = SB + '?select=id,ip,prefix,ag,created_at' + sorgu(filtreler())
+    const url = SB + '?select=id,sayfa,olay,detay,created_at' + sorgu(filtreler())
       + '&order=' + siralaAlan + '.' + (artan ? 'asc' : 'desc') + ',id.desc'
       + '&limit=' + SAYFA_BOYU + '&offset=' + (sayfa * SAYFA_BOYU);
     try {
@@ -133,7 +156,7 @@
       const veri = await r.json();
       toplam = sayimOku(r);
       ciz(veri);
-      $('bilgi').textContent = toplam.toLocaleString('tr-TR') + ' kayıt bulundu · güncellendi ' + new Date().toLocaleTimeString('tr-TR');
+      $('bilgi').textContent = toplam.toLocaleString('tr-TR') + ' olay bulundu · güncellendi ' + new Date().toLocaleTimeString('tr-TR');
     } catch (e) {
       $('govde').innerHTML = '<tr><td colspan="4" class="lg-hata">Kayıtlar yüklenemedi (' + kacis(e.message) + ').</td></tr>';
       $('bilgi').textContent = 'Bağlantı hatası';
@@ -147,10 +170,10 @@
       return;
     }
     $('govde').innerHTML = veri.map(k =>
-      '<tr><td>' + kacis(zaman(k.created_at)) + '</td>'
-      + '<td class="mono">' + kacis(k.ip) + '</td>'
-      + '<td class="mono">/' + kacis(k.prefix) + '</td>'
-      + '<td class="mono">' + kacis(k.ag) + '</td></tr>'
+      '<tr><td class="zaman">' + kacis(zaman(k.created_at)) + '</td>'
+      + '<td><span class="cip ' + kacis(k.sayfa) + '">' + kacis(SEKME_AD[k.sayfa] || k.sayfa) + '</span></td>'
+      + '<td>' + kacis(k.olay) + '</td>'
+      + '<td class="detay">' + (k.detay ? kacis(k.detay) : '–') + '</td></tr>'
     ).join('');
   }
 
@@ -190,29 +213,31 @@
   function yenileHepsi() { yukle(); ozet(); }
 
   async function csvIndir() {
-    const url = SB + '?select=created_at,ip,prefix,ag' + sorgu(filtreler())
+    const url = SB + '?select=created_at,sayfa,olay,detay' + sorgu(filtreler())
       + '&order=' + siralaAlan + '.' + (artan ? 'asc' : 'desc') + '&limit=5000';
     try {
       const r = await fetch(url, { headers: basliklar() });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const veri = await r.json();
-      const satirlar = [['Zaman', 'IP Adresi', 'Prefix', 'Ağ Adresi']]
-        .concat(veri.map(k => [zaman(k.created_at), k.ip, '/' + k.prefix, k.ag]));
+      const satirlar = [['Zaman', 'Sekme', 'Olay', 'Detay']]
+        .concat(veri.map(k => [zaman(k.created_at), SEKME_AD[k.sayfa] || k.sayfa, k.olay, k.detay || '']));
       // Türkçe Excel için ; ayırıcı ve UTF-8 BOM
       const csv = '\uFEFF' + satirlar.map(s => s.map(h => '"' + String(h).replace(/"/g, '""') + '"').join(';')).join('\r\n');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-      a.download = 'subnet-kayitlari-' + new Date().toISOString().slice(0, 10) + '.csv';
+      a.download = 'olay-kayitlari-' + new Date().toISOString().slice(0, 10) + '.csv';
       document.body.appendChild(a); a.click(); a.remove();
+      if (window.logYaz) logYaz('CSV indirildi', veri.length + ' kayıt');
     } catch (e) { alert('CSV oluşturulamadı: ' + e.message); }
   }
 
   // ---- Olaylar ----
-  $('uygula').addEventListener('click', () => { sayfa = 0; yukle(); });
-  $('fIp').addEventListener('keydown', e => { if (e.key === 'Enter') { sayfa = 0; yukle(); } });
+  function filtrele() { sayfa = 0; yukle(); }
+  $('uygula').addEventListener('click', filtrele);
+  $('fDetay').addEventListener('keydown', e => { if (e.key === 'Enter') filtrele(); });
   $('sifirla').addEventListener('click', () => {
-    $('fIp').value = ''; $('fPrefix').value = ''; $('fBas').value = ''; $('fBit').value = '';
-    sayfa = 0; yukle();
+    $('fSayfa').value = ''; $('fOlay').value = ''; $('fDetay').value = ''; $('fBas').value = ''; $('fBit').value = '';
+    filtrele();
   });
   $('onceki').addEventListener('click', () => { if (sayfa > 0) { sayfa--; yukle(); } });
   $('sonraki').addEventListener('click', () => { sayfa++; yukle(); });
@@ -231,7 +256,8 @@
   });
 
   siralamaBasliklari();
-  yenileHepsi();
+  // Sayfa görüntüleme kaydı kısa bir gecikmeyle düşsün, sonra listeyi getir
+  setTimeout(yenileHepsi, 400);
   </script>
 </body>
 </html>

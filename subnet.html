@@ -67,6 +67,7 @@
       </div>
     </div>
   </main>
+  <script src="js/log.js"></script>
   <script src="js/app.js"></script>
   <script>
   const sel = document.getElementById('prefix');
@@ -148,6 +149,7 @@
       btn.addEventListener('click', () => {
         const metin = btn.getAttribute('data-deger');
         navigator.clipboard.writeText(metin).then(() => {
+          if (window.logYaz) logYaz('Değer kopyalandı', metin);
           const eski = btn.textContent;
           btn.textContent = 'kopyalandı'; btn.classList.add('ok');
           setTimeout(() => { btn.textContent = eski; btn.classList.remove('ok'); }, 1200);
@@ -211,11 +213,15 @@
     try {
       const r = await fetch(SB_URL + '?id=gt.0', { method: 'DELETE', headers: SB_BASLIK });
       if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (window.logYaz) logYaz('Geçmiş temizlendi');
       gecmisGetir();
     } catch (e) { alert('Silme başarısız oldu.'); }
   });
 
-  function hesaplaVeKaydet() { hesapla(); gecmiseEkle(); }
+  function hesaplaVeKaydet() {
+    hesapla(); gecmiseEkle();
+    if (window.logYaz) logYaz('Hesaplama', document.getElementById('ip').value.trim() + '/' + document.getElementById('prefix').value);
+  }
   document.getElementById('hesapla').addEventListener('click', hesaplaVeKaydet);
   document.getElementById('ip').addEventListener('keydown', e => { if (e.key === 'Enter') hesaplaVeKaydet(); });
   gecmisGetir();
