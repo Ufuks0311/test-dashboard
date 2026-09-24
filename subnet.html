@@ -148,13 +148,15 @@
     document.querySelectorAll('.sn-kopya').forEach(btn => {
       btn.addEventListener('click', () => {
         const metin = btn.getAttribute('data-deger');
+        const satir = btn.closest('.sn-satir');
+        const baslik = satir ? satir.querySelector('.sn-etiket').textContent.trim() : 'Değer';
         navigator.clipboard.writeText(metin).then(() => {
-          if (window.logYaz) logYaz('Değer kopyalandı', metin);
+          if (window.logYaz) logYaz('Değer kopyalandı', baslik + ': ' + metin);
           const eski = btn.textContent;
           btn.textContent = 'kopyalandı'; btn.classList.add('ok');
           setTimeout(() => { btn.textContent = eski; btn.classList.remove('ok'); }, 1200);
         }).catch(err => {
-          if (window.logYaz) logYaz('Kopyalama başarısız', metin + ' (tarayıcı panoya erişime izin vermedi)');
+          if (window.logYaz) logYaz('Kopyalama başarısız', baslik + ': ' + metin + ' (tarayıcı panoya erişime izin vermedi)');
           btn.textContent = 'hata';
         });
       });
