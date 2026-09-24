@@ -6,6 +6,7 @@
   <title>Bakım Anlaşmaları — IT Panosu</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth.js"></script>
   <style>
     .bk-kart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; margin-bottom:1.25rem; }
     .bk-ust { display:flex; justify-content:flex-end; align-items:center; gap:.75rem; margin-bottom:1rem; }
@@ -75,11 +76,6 @@
   <main>
     <!-- Uygulama (oturum doğrulanınca gösterilir; oturum yoksa giris.html'e yönlendirilir) -->
     <section id="uygulama" hidden>
-      <div class="bk-ust">
-        <span class="bk-bilgi" id="kullaniciBilgi" style="margin:0"></span>
-        <button class="bk-btn ikincil kucuk" id="cikisBtn" data-log="ozel">Çıkış</button>
-      </div>
-
       <section class="bk-kart-grid">
         <div class="kart"><h2>Toplam Anlaşma</h2><p class="deger" id="stToplam">–</p></div>
         <div class="kart"><h2>Aktif</h2><p class="deger" id="stAktif">–</p></div>
@@ -160,7 +156,7 @@
   // ---- Supabase bağlantısı (giriş zorunlu) ----
   const SB_URL = 'https://ayxjajcymhqslanqkpqd.supabase.co';
   const SB_KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
-  const sb = window.supabase.createClient(SB_URL, SB_KEY);
+  const sb = window.sb; // ortak oturum istemcisi (js/auth.js)
   const TABLO = 'bakim_anlasma', DEPO = 'sozlesmeler', UYARI_GUN = 30, MAKS_DOSYA = 10 * 1024 * 1024;
   let kayitlar = [], duzenlenen = null, detaydaki = null, aktifKullanici = null;
 
@@ -186,24 +182,8 @@
     return { kod: 'aktif', ad: 'Aktif' };
   }
 
-  // ---- Oturum: giriş yoksa ayrı giriş sayfasına yönlendir ----
-  const GIRIS_SAYFASI = 'giris.html?next=bakim.html';
-  sb.auth.onAuthStateChange((_olay, oturum) => {
-    const kullanici = oturum ? oturum.user : null;
-    if (!kullanici) { location.replace(GIRIS_SAYFASI); return; }
-    $('uygulama').hidden = false;
-    if (!aktifKullanici || aktifKullanici.id !== kullanici.id) {
-      aktifKullanici = kullanici;
-      $('kullaniciBilgi').textContent = 'Oturum: ' + kullanici.email;
-      yukle();
-    }
-  });
-
-  $('cikisBtn').addEventListener('click', async () => {
-    log('Çıkış yapıldı');
-    $('cikisBtn').disabled = true;
-    await sb.auth.signOut(); // oturum kapanınca yukarıdaki dinleyici giriş sayfasına yönlendirir
-  });
+  // ---- Oturum: ortak giriş (js/auth.js) — ayrıca giriş istenmez ----
+  window.oturumHazir.then(oturum => { aktifKullanici = oturum.user; $('uygulama').hidden = false; yukle(); });
 
   // ---- Listeleme ----
   async function yukle() {

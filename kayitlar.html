@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kayıtlar — IT Panosu</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth.js"></script>
   <style>
     .lg-ozet { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; margin-bottom:1.25rem; }
     .lg-filtre { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; background:var(--kart); padding:1rem; border-radius:12px; margin-bottom:1rem; }
@@ -34,6 +36,7 @@
     .cip.sunucular { color:#3ecf7a; background:rgba(62,207,122,.12); }
     .cip.subnet { color:#e3b341; background:rgba(227,179,65,.12); }
     .cip.kayitlar { color:#bc8cff; background:rgba(188,140,255,.12); }
+    .cip.giris { color:#8b949e; background:rgba(139,148,158,.14); }
     .cip.bakim { color:#ff7b72; background:rgba(255,123,114,.12); }
     .lg-bos { padding:2rem; text-align:center; color:#8b949e; }
     .lg-hata { padding:2rem; text-align:center; color:#f85149; }
@@ -67,6 +70,7 @@
           <option value="subnet">Subnet Hesaplama</option>
           <option value="kayitlar">Kayıtlar</option>
           <option value="bakim">Bakım Anlaşmaları</option>
+          <option value="giris">Giriş</option>
         </select></div>
       <div class="lg-alan"><label for="fOlay">Olay</label>
         <select id="fOlay">
@@ -84,6 +88,7 @@
           <option>Giriş yapıldı</option>
           <option>Giriş başarısız</option>
           <option>Çıkış yapıldı</option>
+          <option>Oturum zaman aşımı</option>
           <option>Anlaşma eklendi</option>
           <option>Anlaşma güncellendi</option>
           <option>Anlaşma silindi</option>
@@ -131,11 +136,11 @@
   const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/olay_log';
   const KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
   const SAYFA_BOYU = 25;
-  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama', 'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları' };
+  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama', 'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş' };
   let sayfa = 0, toplam = 0, siralaAlan = 'created_at', artan = false, otoZamanlayici = null;
 
   const $ = id => document.getElementById(id);
-  const basliklar = (ek) => Object.assign({ apikey: KEY }, ek || {});
+  const basliklar = (ek) => window.yetkiBasliklari(ek); // giriş yapan kullanıcının kimliğiyle
 
   function kacis(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -271,7 +276,7 @@
 
   siralamaBasliklari();
   // Sayfa görüntüleme kaydı kısa bir gecikmeyle düşsün, sonra listeyi getir
-  setTimeout(yenileHepsi, 400);
+  window.oturumHazir.then(() => setTimeout(yenileHepsi, 300));
   </script>
 </body>
 </html>

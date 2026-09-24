@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Giriş — IT Panosu</title>
+  <title>Giriş — IT Operasyon Panosu</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -11,7 +11,8 @@
     .gr-kutu { width:100%; max-width:400px; background:var(--kart); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:2rem; box-shadow:0 12px 40px rgba(0,0,0,.35); }
     .gr-kutu .logo { display:block; margin:0 auto 1.25rem; }
     .gr-kutu h1 { font-size:1.3rem; text-align:center; margin-bottom:.35rem; }
-    .gr-alt { color:#8b949e; font-size:.85rem; text-align:center; margin-bottom:1.5rem; }
+    .gr-alt { color:#8b949e; font-size:.85rem; text-align:center; margin-bottom:1.25rem; }
+    .gr-bilgi { background:rgba(227,179,65,.1); border:1px solid rgba(227,179,65,.35); color:#f5d98a; font-size:.85rem; border-radius:9px; padding:.65rem .8rem; margin-bottom:1rem; text-align:center; }
     .gr-form { display:flex; flex-direction:column; gap:.9rem; }
     .gr-alan { display:flex; flex-direction:column; gap:.35rem; }
     .gr-alan label { font-size:.78rem; color:#8b949e; }
@@ -24,15 +25,14 @@
     .gr-btn:hover { opacity:.9; }
     .gr-btn:disabled { opacity:.5; cursor:default; }
     .gr-hata { color:#f85149; font-size:.85rem; min-height:1.2em; text-align:center; }
-    .gr-geri { display:block; text-align:center; margin-top:1.25rem; color:#8b949e; font-size:.85rem; text-decoration:none; }
-    .gr-geri:hover { color:var(--vurgu); }
   </style>
 </head>
 <body>
   <main class="gr-kutu">
     <span class="logo" title="DaVinci Teknoloji"></span>
-    <h1>Bakım Anlaşmaları</h1>
-    <p class="gr-alt">Bu bölüm sözleşme ve iletişim bilgileri içerir.<br>Devam etmek için giriş yapın.</p>
+    <h1>IT Operasyon Panosu</h1>
+    <p class="gr-alt">Devam etmek için giriş yapın.</p>
+    <p class="gr-bilgi" id="nedenMesaj" hidden></p>
 
     <form class="gr-form" id="girisForm" novalidate>
       <div class="gr-alan">
@@ -47,8 +47,6 @@
       <button type="submit" class="gr-btn" id="girisBtn" data-log="ozel">Giriş yap</button>
       <p class="gr-hata" id="girisHata" role="alert"></p>
     </form>
-
-    <a class="gr-geri" href="index.html">← Panoya dön</a>
   </main>
 
   <script src="js/log.js"></script>
@@ -57,14 +55,28 @@
     'https://ayxjajcymhqslanqkpqd.supabase.co',
     'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr' // herkese açık (publishable) anahtar
   );
-  // Girişten sonra gidilecek sayfa: sadece izin verilen sayfalara yönlendir (dış siteye yönlendirme açığı olmasın)
-  const IZINLI_HEDEFLER = ['bakim.html'];
-  const istenen = new URLSearchParams(location.search).get('next');
-  const hedef = IZINLI_HEDEFLER.includes(istenen) ? istenen : 'bakim.html';
+  const BOSTA_SURE = 5 * 60 * 1000, ETKINLIK_ANAHTAR = 'panoSonEtkinlik';
+  // Girişten sonra gidilecek sayfa: sadece panonun kendi sayfalarına izin ver (dış siteye yönlendirme açığı olmasın)
+  const IZINLI_HEDEFLER = ['index.html', 'sunucular.html', 'subnet.html', 'kayitlar.html', 'bakim.html'];
+  const parametreler = new URLSearchParams(location.search);
+  const istenen = parametreler.get('next');
+  const hedef = IZINLI_HEDEFLER.includes(istenen) ? istenen : 'index.html';
   const $ = id => document.getElementById(id);
 
-  // Zaten oturum açıksa formu gösterme, doğrudan devam et
-  sb.auth.getSession().then(({ data }) => { if (data.session) location.replace(hedef); });
+  const NEDENLER = {
+    zamanasimi: '5 dakika işlem yapılmadığı için oturumunuz güvenlik amacıyla kapatıldı. Lütfen tekrar giriş yapın.',
+    cikis: 'Oturumunuz kapatıldı.'
+  };
+  const neden = parametreler.get('neden');
+  if (NEDENLER[neden]) { $('nedenMesaj').textContent = NEDENLER[neden]; $('nedenMesaj').hidden = false; }
+
+  // Oturum hâlâ açık ve güncelse formu gösterme, doğrudan devam et; bayatsa kapat
+  sb.auth.getSession().then(({ data }) => {
+    if (!data.session) return;
+    const son = parseInt(localStorage.getItem(ETKINLIK_ANAHTAR) || '0', 10);
+    if (son && Date.now() - son <= BOSTA_SURE) location.replace(hedef);
+    else sb.auth.signOut();
+  });
 
   $('sifreGoster').addEventListener('change', e => { $('gSifre').type = e.target.checked ? 'text' : 'password'; });
 
@@ -75,7 +87,7 @@
     if (!eposta || !sifre) { $('girisHata').textContent = 'E-posta ve şifre gerekli.'; return; }
 
     $('girisBtn').disabled = true; $('girisBtn').textContent = 'Giriş yapılıyor…';
-    const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre });
+    const { data, error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre });
     if (error) {
       $('girisBtn').disabled = false; $('girisBtn').textContent = 'Giriş yap';
       $('girisHata').textContent = /invalid/i.test(error.message)
@@ -85,6 +97,8 @@
       if (window.logYaz) logYaz('Giriş başarısız');
       return;
     }
+    try { localStorage.setItem(ETKINLIK_ANAHTAR, String(Date.now())); } catch (err) {}
+    window.oturumToken = data.session.access_token; // giriş kaydı kullanıcının kimliğiyle yazılsın
     if (window.logYaz) logYaz('Giriş yapıldı');
     location.replace(hedef);
   });
