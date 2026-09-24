@@ -4,7 +4,7 @@
   const LOG_KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
   const SAYFALAR = {
     '': 'genel-bakis', 'index.html': 'genel-bakis',
-    'sunucular.html': 'sunucular', 'subnet.html': 'subnet', 'kayitlar.html': 'kayitlar', 'bakim.html': 'bakim'
+    'sunucular.html': 'sunucular', 'subnet.html': 'subnet', 'kayitlar.html': 'kayitlar', 'bakim.html': 'bakim', 'giris.html': 'bakim'
   };
   const SAYFA = SAYFALAR[location.pathname.split('/').pop()] || 'genel-bakis';
 

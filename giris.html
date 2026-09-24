@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giriş — IT Panosu</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+    .gr-kutu { width:100%; max-width:400px; background:var(--kart); border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:2rem; box-shadow:0 12px 40px rgba(0,0,0,.35); }
+    .gr-kutu .logo { display:block; margin:0 auto 1.25rem; }
+    .gr-kutu h1 { font-size:1.3rem; text-align:center; margin-bottom:.35rem; }
+    .gr-alt { color:#8b949e; font-size:.85rem; text-align:center; margin-bottom:1.5rem; }
+    .gr-form { display:flex; flex-direction:column; gap:.9rem; }
+    .gr-alan { display:flex; flex-direction:column; gap:.35rem; }
+    .gr-alan label { font-size:.78rem; color:#8b949e; }
+    .gr-alan input[type=email], .gr-alan input[type=password], .gr-alan input[type=text] {
+      background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:9px;
+      padding:.7rem .8rem; font-size:.95rem; font-family:inherit; width:100%; }
+    .gr-alan input:focus { outline:none; border-color:var(--vurgu); }
+    .gr-goster { display:flex; align-items:center; gap:.4rem; font-size:.8rem; color:#8b949e; cursor:pointer; }
+    .gr-btn { background:var(--vurgu); color:#04121f; border:none; border-radius:9px; padding:.75rem 1rem; font-size:1rem; font-weight:600; cursor:pointer; margin-top:.25rem; }
+    .gr-btn:hover { opacity:.9; }
+    .gr-btn:disabled { opacity:.5; cursor:default; }
+    .gr-hata { color:#f85149; font-size:.85rem; min-height:1.2em; text-align:center; }
+    .gr-geri { display:block; text-align:center; margin-top:1.25rem; color:#8b949e; font-size:.85rem; text-decoration:none; }
+    .gr-geri:hover { color:var(--vurgu); }
+  </style>
+</head>
+<body>
+  <main class="gr-kutu">
+    <span class="logo" title="DaVinci Teknoloji"></span>
+    <h1>Bakım Anlaşmaları</h1>
+    <p class="gr-alt">Bu bölüm sözleşme ve iletişim bilgileri içerir.<br>Devam etmek için giriş yapın.</p>
+
+    <form class="gr-form" id="girisForm" novalidate>
+      <div class="gr-alan">
+        <label for="gEposta">E-posta</label>
+        <input id="gEposta" type="email" autocomplete="username" required autofocus>
+      </div>
+      <div class="gr-alan">
+        <label for="gSifre">Şifre</label>
+        <input id="gSifre" type="password" autocomplete="current-password" required>
+        <label class="gr-goster"><input type="checkbox" id="sifreGoster" data-log="ozel"> Şifreyi göster</label>
+      </div>
+      <button type="submit" class="gr-btn" id="girisBtn" data-log="ozel">Giriş yap</button>
+      <p class="gr-hata" id="girisHata" role="alert"></p>
+    </form>
+
+    <a class="gr-geri" href="index.html">← Panoya dön</a>
+  </main>
+
+  <script src="js/log.js"></script>
+  <script>
+  const sb = window.supabase.createClient(
+    'https://ayxjajcymhqslanqkpqd.supabase.co',
+    'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr' // herkese açık (publishable) anahtar
+  );
+  // Girişten sonra gidilecek sayfa: sadece izin verilen sayfalara yönlendir (dış siteye yönlendirme açığı olmasın)
+  const IZINLI_HEDEFLER = ['bakim.html'];
+  const istenen = new URLSearchParams(location.search).get('next');
+  const hedef = IZINLI_HEDEFLER.includes(istenen) ? istenen : 'bakim.html';
+  const $ = id => document.getElementById(id);
+
+  // Zaten oturum açıksa formu gösterme, doğrudan devam et
+  sb.auth.getSession().then(({ data }) => { if (data.session) location.replace(hedef); });
+
+  $('sifreGoster').addEventListener('change', e => { $('gSifre').type = e.target.checked ? 'text' : 'password'; });
+
+  $('girisForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('girisHata').textContent = '';
+    const eposta = $('gEposta').value.trim(), sifre = $('gSifre').value;
+    if (!eposta || !sifre) { $('girisHata').textContent = 'E-posta ve şifre gerekli.'; return; }
+
+    $('girisBtn').disabled = true; $('girisBtn').textContent = 'Giriş yapılıyor…';
+    const { error } = await sb.auth.signInWithPassword({ email: eposta, password: sifre });
+    if (error) {
+      $('girisBtn').disabled = false; $('girisBtn').textContent = 'Giriş yap';
+      $('girisHata').textContent = /invalid/i.test(error.message)
+        ? 'E-posta veya şifre hatalı.'
+        : 'Giriş yapılamadı: ' + error.message;
+      $('gSifre').value = ''; $('gSifre').focus();
+      if (window.logYaz) logYaz('Giriş başarısız');
+      return;
+    }
+    if (window.logYaz) logYaz('Giriş yapıldı');
+    location.replace(hedef);
+  });
+  </script>
+</body>
+</html>

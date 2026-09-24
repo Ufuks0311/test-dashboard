@@ -13,10 +13,10 @@
     .bk-alan { display:flex; flex-direction:column; gap:.3rem; }
     .bk-alan.genis { flex:1; min-width:220px; }
     .bk-alan label, .bk-form label { font-size:.75rem; color:#8b949e; }
-    .bk-filtre input, .bk-filtre select, .bk-form input, .bk-form select, .bk-form textarea, .bk-giris-kutu input {
+    .bk-filtre input, .bk-filtre select, .bk-form input, .bk-form select, .bk-form textarea {
       background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:8px;
       padding:.55rem .7rem; font-size:.9rem; font-family:inherit; width:100%; }
-    .bk-filtre input:focus, .bk-filtre select:focus, .bk-form input:focus, .bk-form select:focus, .bk-form textarea:focus, .bk-giris-kutu input:focus { outline:none; border-color:var(--vurgu); }
+    .bk-filtre input:focus, .bk-filtre select:focus, .bk-form input:focus, .bk-form select:focus, .bk-form textarea:focus { outline:none; border-color:var(--vurgu); }
     input[type=date] { color-scheme:dark; }
     .bk-btn { background:var(--vurgu); color:#04121f; border:none; border-radius:8px; padding:.6rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; white-space:nowrap; }
     .bk-btn.ikincil { background:transparent; color:var(--metin); border:1px solid rgba(255,255,255,.2); font-weight:500; }
@@ -40,10 +40,6 @@
     .cip.suresiz { color:#8b949e; background:rgba(139,148,158,.14); }
     .bk-bos, .bk-yukleniyor { padding:2rem; text-align:center; color:#8b949e; }
     .bk-hata { color:#f85149; font-size:.85rem; min-height:1.2em; }
-    .bk-giris { display:flex; justify-content:center; padding-top:2rem; }
-    .bk-giris-kutu { width:100%; max-width:380px; background:var(--kart); border-radius:14px; padding:1.75rem; display:flex; flex-direction:column; gap:.8rem; }
-    .bk-giris-kutu h2 { font-size:1.2rem; }
-    .bk-giris-kutu p { color:#8b949e; font-size:.85rem; }
     dialog { background:var(--kart); color:var(--metin); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:0; width:95%; max-width:760px; }
     dialog::backdrop { background:rgba(0,0,0,.6); }
     .dlg-ic { padding:1.5rem; max-height:85vh; overflow-y:auto; }
@@ -77,19 +73,7 @@
     <span id="saat" class="saat"></span>
   </header>
   <main>
-    <!-- Giriş ekranı -->
-    <section id="girisBolumu" class="bk-giris" hidden>
-      <div class="bk-giris-kutu">
-        <h2>Giriş yap</h2>
-        <p>Bu bölüm sözleşme ve iletişim bilgileri içerdiği için yalnızca yetkili kullanıcılara açıktır.</p>
-        <div class="bk-alan"><label for="gEposta">E-posta</label><input id="gEposta" type="email" autocomplete="username"></div>
-        <div class="bk-alan"><label for="gSifre">Şifre</label><input id="gSifre" type="password" autocomplete="current-password"></div>
-        <button class="bk-btn" id="girisBtn" data-log="ozel">Giriş yap</button>
-        <p class="bk-hata" id="girisHata"></p>
-      </div>
-    </section>
-
-    <!-- Uygulama -->
+    <!-- Uygulama (oturum doğrulanınca gösterilir; oturum yoksa giris.html'e yönlendirilir) -->
     <section id="uygulama" hidden>
       <div class="bk-ust">
         <span class="bk-bilgi" id="kullaniciBilgi" style="margin:0"></span>
@@ -202,31 +186,24 @@
     return { kod: 'aktif', ad: 'Aktif' };
   }
 
-  // ---- Oturum ----
+  // ---- Oturum: giriş yoksa ayrı giriş sayfasına yönlendir ----
+  const GIRIS_SAYFASI = 'giris.html?next=bakim.html';
   sb.auth.onAuthStateChange((_olay, oturum) => {
     const kullanici = oturum ? oturum.user : null;
-    $('girisBolumu').hidden = !!kullanici;
-    $('uygulama').hidden = !kullanici;
-    if (kullanici && (!aktifKullanici || aktifKullanici.id !== kullanici.id)) {
+    if (!kullanici) { location.replace(GIRIS_SAYFASI); return; }
+    $('uygulama').hidden = false;
+    if (!aktifKullanici || aktifKullanici.id !== kullanici.id) {
       aktifKullanici = kullanici;
       $('kullaniciBilgi').textContent = 'Oturum: ' + kullanici.email;
       yukle();
     }
-    if (!kullanici) { aktifKullanici = null; kayitlar = []; $('govde').innerHTML = ''; }
   });
 
-  async function girisYap() {
-    $('girisHata').textContent = '';
-    $('girisBtn').disabled = true;
-    const { error } = await sb.auth.signInWithPassword({ email: $('gEposta').value.trim(), password: $('gSifre').value });
-    $('girisBtn').disabled = false;
-    if (error) { $('girisHata').textContent = 'Giriş başarısız: e-posta veya şifre hatalı.'; log('Giriş başarısız'); return; }
-    $('gSifre').value = '';
-    log('Giriş yapıldı');
-  }
-  $('girisBtn').addEventListener('click', girisYap);
-  $('gSifre').addEventListener('keydown', e => { if (e.key === 'Enter') girisYap(); });
-  $('cikisBtn').addEventListener('click', async () => { await sb.auth.signOut(); log('Çıkış yapıldı'); });
+  $('cikisBtn').addEventListener('click', async () => {
+    log('Çıkış yapıldı');
+    $('cikisBtn').disabled = true;
+    await sb.auth.signOut(); // oturum kapanınca yukarıdaki dinleyici giriş sayfasına yönlendirir
+  });
 
   // ---- Listeleme ----
   async function yukle() {
