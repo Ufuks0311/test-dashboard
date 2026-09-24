@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kayıtlar — IT Panosu</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .lg-ozet { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; margin-bottom:1.25rem; }
+    .lg-filtre { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; background:var(--kart); padding:1rem; border-radius:12px; margin-bottom:1rem; }
+    .lg-alan { display:flex; flex-direction:column; gap:.3rem; }
+    .lg-alan label { font-size:.75rem; color:#8b949e; }
+    .lg-filtre input, .lg-filtre select { background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:8px; padding:.55rem .7rem; font-size:.9rem; font-family:inherit; }
+    .lg-filtre input:focus, .lg-filtre select:focus { outline:none; border-color:var(--vurgu); }
+    .lg-filtre input[type=date] { color-scheme:dark; }
+    .lg-btn { background:var(--vurgu); color:#04121f; border:none; border-radius:8px; padding:.6rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; }
+    .lg-btn.ikincil { background:transparent; color:var(--metin); border:1px solid rgba(255,255,255,.2); font-weight:500; }
+    .lg-btn:hover { opacity:.88; }
+    .lg-btn:disabled { opacity:.35; cursor:default; }
+    .lg-arac { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; justify-content:space-between; margin-bottom:.75rem; }
+    .lg-arac .sag { display:flex; gap:.6rem; align-items:center; flex-wrap:wrap; }
+    .lg-bilgi { color:#8b949e; font-size:.85rem; }
+    .lg-otomatik { font-size:.85rem; color:#8b949e; display:flex; gap:.35rem; align-items:center; cursor:pointer; }
+    .lg-tablo-kap { overflow-x:auto; background:var(--kart); border-radius:12px; }
+    .lg-tablo { width:100%; border-collapse:collapse; font-size:.9rem; }
+    .lg-tablo th, .lg-tablo td { padding:.7rem 1rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); white-space:nowrap; }
+    .lg-tablo th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; cursor:pointer; user-select:none; }
+    .lg-tablo th:hover, .lg-tablo th.aktif { color:var(--metin); }
+    .lg-tablo td.mono { font-family:ui-monospace,Menlo,monospace; }
+    .lg-tablo tbody tr:hover { background:rgba(255,255,255,.03); }
+    .lg-bos { padding:2rem; text-align:center; color:#8b949e; }
+    .lg-hata { padding:2rem; text-align:center; color:#f85149; }
+    .lg-sayfa { display:flex; gap:.75rem; align-items:center; justify-content:flex-end; margin-top:.75rem; }
+    .deger.kucuk { font-size:1.05rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo" title="DaVinci Teknoloji"></span>
+    <h1>Kayıt Görüntüleyici</h1>
+    <nav>
+      <a href="index.html">Genel Bakış</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html" class="active">Kayıtlar</a>
+    </nav>
+    <span id="saat" class="saat"></span>
+  </header>
+  <main>
+    <section class="lg-ozet">
+      <div class="kart"><h2>Toplam Kayıt</h2><p class="deger" id="stToplam">–</p></div>
+      <div class="kart"><h2>Bugün</h2><p class="deger" id="stBugun">–</p></div>
+      <div class="kart"><h2>Son Kayıt</h2><p class="deger kucuk" id="stSon">–</p></div>
+    </section>
+
+    <div class="lg-filtre">
+      <div class="lg-alan"><label for="fIp">IP adresi (içerir)</label><input id="fIp" type="text" placeholder="ör. 192.168" size="16"></div>
+      <div class="lg-alan"><label for="fPrefix">Prefix</label><select id="fPrefix"></select></div>
+      <div class="lg-alan"><label for="fBas">Başlangıç</label><input id="fBas" type="date"></div>
+      <div class="lg-alan"><label for="fBit">Bitiş</label><input id="fBit" type="date"></div>
+      <button class="lg-btn" id="uygula">Filtrele</button>
+      <button class="lg-btn ikincil" id="sifirla">Sıfırla</button>
+    </div>
+
+    <div class="lg-arac">
+      <span class="lg-bilgi" id="bilgi">Yükleniyor…</span>
+      <div class="sag">
+        <label class="lg-otomatik"><input type="checkbox" id="oto"> 30 sn'de bir yenile</label>
+        <button class="lg-btn ikincil" id="yenileBtn">Yenile</button>
+        <button class="lg-btn ikincil" id="csvBtn">CSV indir</button>
+      </div>
+    </div>
+
+    <div class="lg-tablo-kap">
+      <table class="lg-tablo">
+        <thead><tr>
+          <th data-alan="created_at">Zaman</th>
+          <th data-alan="ip">IP Adresi</th>
+          <th data-alan="prefix">Prefix</th>
+          <th data-alan="ag">Ağ Adresi</th>
+        </tr></thead>
+        <tbody id="govde"></tbody>
+      </table>
+    </div>
+
+    <div class="lg-sayfa">
+      <button class="lg-btn ikincil" id="onceki">‹ Önceki</button>
+      <span class="lg-bilgi" id="sayfaBilgi"></span>
+      <button class="lg-btn ikincil" id="sonraki">Sonraki ›</button>
+    </div>
+  </main>
+  <script src="js/app.js"></script>
+  <script>
+  // ---- Supabase bağlantısı (salt okunur) ----
+  const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/subnet_gecmis';
+  const KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
+  const SAYFA_BOYU = 25;
+  let sayfa = 0, toplam = 0, siralaAlan = 'created_at', artan = false, otoZamanlayici = null;
+
+  const $ = id => document.getElementById(id);
+  const basliklar = (ek) => Object.assign({ apikey: KEY }, ek || {});
+
+  $('fPrefix').innerHTML = '<option value="">Tümü</option>'
+    + Array.from({ length: 33 }, (_, i) => '<option value="' + i + '">/' + i + '</option>').join('');
+
+  function kacis(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function zaman(iso) { return new Date(iso).toLocaleString('tr-TR'); }
+
+  // Filtreleri Supabase (PostgREST) sorgu parametrelerine çevir
+  function filtreler() {
+    const p = [];
+    const ip = $('fIp').value.replace(/[^0-9.]/g, '');
+    if (ip) p.push('ip=ilike.*' + ip + '*');
+    if ($('fPrefix').value !== '') p.push('prefix=eq.' + $('fPrefix').value);
+    if ($('fBas').value) p.push('created_at=gte.' + encodeURIComponent(new Date($('fBas').value + 'T00:00:00').toISOString()));
+    if ($('fBit').value) p.push('created_at=lte.' + encodeURIComponent(new Date($('fBit').value + 'T23:59:59.999').toISOString()));
+    return p;
+  }
+  function sorgu(ek) { return ek.length ? '&' + ek.join('&') : ''; }
+  function sayimOku(r) {
+    const cr = r.headers.get('content-range');
+    return cr ? parseInt(cr.split('/')[1], 10) || 0 : 0;
+  }
+
+  async function yukle() {
+    $('bilgi').textContent = 'Yükleniyor…';
+    const url = SB + '?select=id,ip,prefix,ag,created_at' + sorgu(filtreler())
+      + '&order=' + siralaAlan + '.' + (artan ? 'asc' : 'desc') + ',id.desc'
+      + '&limit=' + SAYFA_BOYU + '&offset=' + (sayfa * SAYFA_BOYU);
+    try {
+      const r = await fetch(url, { headers: basliklar({ Prefer: 'count=exact' }) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const veri = await r.json();
+      toplam = sayimOku(r);
+      ciz(veri);
+      $('bilgi').textContent = toplam.toLocaleString('tr-TR') + ' kayıt bulundu · güncellendi ' + new Date().toLocaleTimeString('tr-TR');
+    } catch (e) {
+      $('govde').innerHTML = '<tr><td colspan="4" class="lg-hata">Kayıtlar yüklenemedi (' + kacis(e.message) + ').</td></tr>';
+      $('bilgi').textContent = 'Bağlantı hatası';
+    }
+    sayfaDurumu();
+  }
+
+  function ciz(veri) {
+    if (!veri.length) {
+      $('govde').innerHTML = '<tr><td colspan="4" class="lg-bos">Kayıt bulunamadı.</td></tr>';
+      return;
+    }
+    $('govde').innerHTML = veri.map(k =>
+      '<tr><td>' + kacis(zaman(k.created_at)) + '</td>'
+      + '<td class="mono">' + kacis(k.ip) + '</td>'
+      + '<td class="mono">/' + kacis(k.prefix) + '</td>'
+      + '<td class="mono">' + kacis(k.ag) + '</td></tr>'
+    ).join('');
+  }
+
+  function sayfaDurumu() {
+    const toplamSayfa = Math.max(1, Math.ceil(toplam / SAYFA_BOYU));
+    $('sayfaBilgi').textContent = 'Sayfa ' + (sayfa + 1) + ' / ' + toplamSayfa;
+    $('onceki').disabled = sayfa === 0;
+    $('sonraki').disabled = sayfa + 1 >= toplamSayfa;
+  }
+
+  function siralamaBasliklari() {
+    document.querySelectorAll('.lg-tablo th').forEach(th => {
+      const ad = th.textContent.replace(/ [▲▼]$/, '');
+      const aktif = th.dataset.alan === siralaAlan;
+      th.classList.toggle('aktif', aktif);
+      th.textContent = ad + (aktif ? (artan ? ' ▲' : ' ▼') : '');
+    });
+  }
+
+  async function ozet() {
+    try {
+      const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+      const [rT, rB, rS] = await Promise.all([
+        fetch(SB + '?select=id&limit=1', { headers: basliklar({ Prefer: 'count=exact' }) }),
+        fetch(SB + '?select=id&limit=1&created_at=gte.' + encodeURIComponent(bugun.toISOString()), { headers: basliklar({ Prefer: 'count=exact' }) }),
+        fetch(SB + '?select=created_at&order=created_at.desc&limit=1', { headers: basliklar() })
+      ]);
+      $('stToplam').textContent = sayimOku(rT).toLocaleString('tr-TR');
+      $('stBugun').textContent = sayimOku(rB).toLocaleString('tr-TR');
+      const son = await rS.json();
+      $('stSon').textContent = son.length ? zaman(son[0].created_at) : 'Kayıt yok';
+    } catch (e) {
+      $('stToplam').textContent = $('stBugun').textContent = $('stSon').textContent = '?';
+    }
+  }
+
+  function yenileHepsi() { yukle(); ozet(); }
+
+  async function csvIndir() {
+    const url = SB + '?select=created_at,ip,prefix,ag' + sorgu(filtreler())
+      + '&order=' + siralaAlan + '.' + (artan ? 'asc' : 'desc') + '&limit=5000';
+    try {
+      const r = await fetch(url, { headers: basliklar() });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const veri = await r.json();
+      const satirlar = [['Zaman', 'IP Adresi', 'Prefix', 'Ağ Adresi']]
+        .concat(veri.map(k => [zaman(k.created_at), k.ip, '/' + k.prefix, k.ag]));
+      // Türkçe Excel için ; ayırıcı ve UTF-8 BOM
+      const csv = '\uFEFF' + satirlar.map(s => s.map(h => '"' + String(h).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = 'subnet-kayitlari-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { alert('CSV oluşturulamadı: ' + e.message); }
+  }
+
+  // ---- Olaylar ----
+  $('uygula').addEventListener('click', () => { sayfa = 0; yukle(); });
+  $('fIp').addEventListener('keydown', e => { if (e.key === 'Enter') { sayfa = 0; yukle(); } });
+  $('sifirla').addEventListener('click', () => {
+    $('fIp').value = ''; $('fPrefix').value = ''; $('fBas').value = ''; $('fBit').value = '';
+    sayfa = 0; yukle();
+  });
+  $('onceki').addEventListener('click', () => { if (sayfa > 0) { sayfa--; yukle(); } });
+  $('sonraki').addEventListener('click', () => { sayfa++; yukle(); });
+  $('yenileBtn').addEventListener('click', yenileHepsi);
+  $('csvBtn').addEventListener('click', csvIndir);
+  $('oto').addEventListener('change', e => {
+    clearInterval(otoZamanlayici);
+    if (e.target.checked) otoZamanlayici = setInterval(yenileHepsi, 30000);
+  });
+  document.querySelectorAll('.lg-tablo th').forEach(th => {
+    th.addEventListener('click', () => {
+      if (siralaAlan === th.dataset.alan) artan = !artan;
+      else { siralaAlan = th.dataset.alan; artan = siralaAlan !== 'created_at'; }
+      sayfa = 0; siralamaBasliklari(); yukle();
+    });
+  });
+
+  siralamaBasliklari();
+  yenileHepsi();
+  </script>
+</body>
+</html>
