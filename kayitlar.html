@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/auth.js"></script>
   <style>
-    .lg-ozet { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; margin-bottom:1.25rem; }
+    .lg-ozet { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1.25rem; }
     .lg-filtre { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; background:var(--kart); padding:1rem; border-radius:12px; margin-bottom:1rem; }
     .lg-alan { display:flex; flex-direction:column; gap:.3rem; }
     .lg-alan label { font-size:.75rem; color:#8b949e; }
@@ -29,15 +29,21 @@
     .lg-tablo th { font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; cursor:pointer; user-select:none; white-space:nowrap; }
     .lg-tablo th:hover, .lg-tablo th.aktif { color:var(--metin); }
     .lg-tablo td.zaman { white-space:nowrap; color:#c9d1d9; }
+    .lg-tablo td.kisi { white-space:nowrap; font-size:.85rem; }
+    .lg-tablo td.kisi .sen { color:var(--vurgu); font-size:.75rem; margin-left:.3rem; }
+    .lg-tablo td.kisi .yok { color:#6e7681; font-style:italic; }
     .lg-tablo td.detay { font-family:ui-monospace,Menlo,monospace; font-size:.85rem; color:#c9d1d9; word-break:break-word; }
     .lg-tablo tbody tr:hover { background:rgba(255,255,255,.03); }
+    .lg-tablo tr.uyari td { background:rgba(248,81,73,.06); }
+    .lg-tablo tr.uyari td.olay { color:#f85149; font-weight:600; }
+    .lg-tablo tr.dikkat td.olay { color:#e3b341; }
     .cip { display:inline-block; font-size:.75rem; font-weight:600; padding:.2rem .6rem; border-radius:999px; white-space:nowrap; }
     .cip.genel-bakis { color:#4aa8ff; background:rgba(74,168,255,.12); }
     .cip.sunucular { color:#3ecf7a; background:rgba(62,207,122,.12); }
     .cip.subnet { color:#e3b341; background:rgba(227,179,65,.12); }
     .cip.kayitlar { color:#bc8cff; background:rgba(188,140,255,.12); }
-    .cip.giris { color:#8b949e; background:rgba(139,148,158,.14); }
     .cip.bakim { color:#ff7b72; background:rgba(255,123,114,.12); }
+    .cip.giris { color:#8b949e; background:rgba(139,148,158,.14); }
     .lg-bos { padding:2rem; text-align:center; color:#8b949e; }
     .lg-hata { padding:2rem; text-align:center; color:#f85149; }
     .lg-sayfa { display:flex; gap:.75rem; align-items:center; justify-content:flex-end; margin-top:.75rem; }
@@ -58,10 +64,14 @@
     <section class="lg-ozet">
       <div class="kart"><h2>Toplam Olay</h2><p class="deger" id="stToplam">–</p></div>
       <div class="kart"><h2>Bugün</h2><p class="deger" id="stBugun">–</p></div>
+      <div class="kart"><h2>Bugün İşlem Yapan</h2><p class="deger" id="stKisi">–</p></div>
+      <div class="kart"><h2>Başarısız Giriş (Bugün)</h2><p class="deger" id="stBasarisiz">–</p></div>
       <div class="kart"><h2>Son Olay</h2><p class="deger kucuk" id="stSon">–</p></div>
     </section>
 
     <div class="lg-filtre">
+      <div class="lg-alan"><label for="fKullanici">Kullanıcı</label>
+        <select id="fKullanici"><option value="">Tümü</option></select></div>
       <div class="lg-alan"><label for="fSayfa">Sekme</label>
         <select id="fSayfa">
           <option value="">Tümü</option>
@@ -75,27 +85,35 @@
       <div class="lg-alan"><label for="fOlay">Olay</label>
         <select id="fOlay">
           <option value="">Tümü</option>
-          <option>Sayfa görüntülendi</option>
-          <option>Buton tıklandı</option>
-          <option>Ayar değiştirildi</option>
-          <option>Durum yenilendi</option>
-          <option>Kullanıcı sayısı güncellendi</option>
-          <option>Hesaplama</option>
-          <option>Değer kopyalandı</option>
-          <option>Kopyalama başarısız</option>
-          <option>Geçmiş temizlendi</option>
-          <option>CSV indirildi</option>
-          <option>Giriş yapıldı</option>
-          <option>Giriş başarısız</option>
-          <option>Çıkış yapıldı</option>
-          <option>Oturum zaman aşımı</option>
-          <option>Anlaşma eklendi</option>
-          <option>Anlaşma güncellendi</option>
-          <option>Anlaşma silindi</option>
-          <option>Anlaşma görüntülendi</option>
-          <option>Dosya açıldı</option>
+          <optgroup label="Oturum">
+            <option>Giriş yapıldı</option>
+            <option>Giriş başarısız</option>
+            <option>Çıkış yapıldı</option>
+            <option>Oturum zaman aşımı</option>
+          </optgroup>
+          <optgroup label="Genel">
+            <option>Sayfa görüntülendi</option>
+            <option>Buton tıklandı</option>
+            <option>Ayar değiştirildi</option>
+            <option>Durum yenilendi</option>
+            <option>Kullanıcı sayısı güncellendi</option>
+            <option>CSV indirildi</option>
+          </optgroup>
+          <optgroup label="Subnet">
+            <option>Hesaplama</option>
+            <option>Değer kopyalandı</option>
+            <option>Kopyalama başarısız</option>
+            <option>Geçmiş temizlendi</option>
+          </optgroup>
+          <optgroup label="Bakım Anlaşmaları">
+            <option>Anlaşma eklendi</option>
+            <option>Anlaşma güncellendi</option>
+            <option>Anlaşma silindi</option>
+            <option>Anlaşma görüntülendi</option>
+            <option>Dosya açıldı</option>
+          </optgroup>
         </select></div>
-      <div class="lg-alan"><label for="fDetay">Detay (içerir)</label><input id="fDetay" type="text" placeholder="ör. 192.168 veya web-01" size="18"></div>
+      <div class="lg-alan"><label for="fDetay">Detay (içerir)</label><input id="fDetay" type="text" placeholder="ör. 192.168 veya web-01" size="16"></div>
       <div class="lg-alan"><label for="fBas">Başlangıç</label><input id="fBas" type="date"></div>
       <div class="lg-alan"><label for="fBit">Bitiş</label><input id="fBit" type="date"></div>
       <button class="lg-btn" id="uygula">Filtrele</button>
@@ -115,6 +133,7 @@
       <table class="lg-tablo">
         <thead><tr>
           <th data-alan="created_at">Zaman</th>
+          <th data-alan="kullanici">Kullanıcı</th>
           <th data-alan="sayfa">Sekme</th>
           <th data-alan="olay">Olay</th>
           <th data-alan="detay">Detay</th>
@@ -132,43 +151,54 @@
   <script src="js/log.js"></script>
   <script src="js/app.js"></script>
   <script>
-  // ---- Supabase bağlantısı (salt okunur görüntüleme) ----
+  // ---- Supabase bağlantısı (giriş yapan kullanıcının kimliğiyle, salt okunur) ----
   const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/olay_log';
-  const KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
-  const SAYFA_BOYU = 25;
-  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama', 'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş' };
+  const SAYFA_BOYU = 25, SUTUN = 5;
+  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama',
+    'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş' };
+  const UYARI_OLAYLARI = ['Giriş başarısız', 'Kopyalama başarısız'];
+  const DIKKAT_OLAYLARI = ['Oturum zaman aşımı', 'Anlaşma silindi', 'Geçmiş temizlendi'];
+  const GIRISSIZ = '__girissiz__';
   let sayfa = 0, toplam = 0, siralaAlan = 'created_at', artan = false, otoZamanlayici = null;
 
   const $ = id => document.getElementById(id);
   const basliklar = (ek) => window.yetkiBasliklari(ek); // giriş yapan kullanıcının kimliğiyle
-
   function kacis(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  function zaman(iso) { return new Date(iso).toLocaleString('tr-TR'); }
+  const zaman = iso => new Date(iso).toLocaleString('tr-TR');
+  const bugunISO = () => { const b = new Date(); b.setHours(0, 0, 0, 0); return b.toISOString(); };
+  const benimEpostam = () => (window.aktifKullanici && window.aktifKullanici.email) || '';
 
   // Filtreleri Supabase (PostgREST) sorgu parametrelerine çevir
   function filtreler() {
     const p = [];
+    const k = $('fKullanici').value;
+    if (k === GIRISSIZ) p.push('kullanici=is.null');
+    else if (k) p.push('kullanici=eq.' + encodeURIComponent(k));
     if ($('fSayfa').value) p.push('sayfa=eq.' + encodeURIComponent($('fSayfa').value));
     if ($('fOlay').value) p.push('olay=eq.' + encodeURIComponent($('fOlay').value));
-    const d = $('fDetay').value.replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü .\/:-]/g, '').trim();
+    const d = $('fDetay').value.replace(/[^0-9A-Za-zÇĞİÖŞÜçğıöşü .\/:@_-]/g, '').trim();
     if (d) p.push('detay=ilike.' + encodeURIComponent('*' + d + '*'));
     if ($('fBas').value) p.push('created_at=gte.' + encodeURIComponent(new Date($('fBas').value + 'T00:00:00').toISOString()));
     if ($('fBit').value) p.push('created_at=lte.' + encodeURIComponent(new Date($('fBit').value + 'T23:59:59.999').toISOString()));
     return p;
   }
-  function sorgu(ek) { return ek.length ? '&' + ek.join('&') : ''; }
+  const sorgu = ek => ek.length ? '&' + ek.join('&') : '';
   function sayimOku(r) {
     const cr = r.headers.get('content-range');
     return cr ? parseInt(cr.split('/')[1], 10) || 0 : 0;
   }
+  function siralama() {
+    const yon = artan ? 'asc' : 'desc';
+    // Kullanıcıya göre sıralamada girişsiz kayıtlar sona gelsin
+    return siralaAlan + '.' + yon + (siralaAlan === 'kullanici' ? '.nullslast' : '') + ',id.desc';
+  }
 
   async function yukle() {
     $('bilgi').textContent = 'Yükleniyor…';
-    const url = SB + '?select=id,sayfa,olay,detay,created_at' + sorgu(filtreler())
-      + '&order=' + siralaAlan + '.' + (artan ? 'asc' : 'desc') + ',id.desc'
-      + '&limit=' + SAYFA_BOYU + '&offset=' + (sayfa * SAYFA_BOYU);
+    const url = SB + '?select=id,kullanici,sayfa,olay,detay,created_at' + sorgu(filtreler())
+      + '&order=' + siralama() + '&limit=' + SAYFA_BOYU + '&offset=' + (sayfa * SAYFA_BOYU);
     try {
       const r = await fetch(url, { headers: basliklar({ Prefer: 'count=exact' }) });
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -177,23 +207,30 @@
       ciz(veri);
       $('bilgi').textContent = toplam.toLocaleString('tr-TR') + ' olay bulundu · güncellendi ' + new Date().toLocaleTimeString('tr-TR');
     } catch (e) {
-      $('govde').innerHTML = '<tr><td colspan="4" class="lg-hata">Kayıtlar yüklenemedi (' + kacis(e.message) + ').</td></tr>';
+      $('govde').innerHTML = '<tr><td colspan="' + SUTUN + '" class="lg-hata">Kayıtlar yüklenemedi (' + kacis(e.message) + ').</td></tr>';
       $('bilgi').textContent = 'Bağlantı hatası';
     }
     sayfaDurumu();
   }
 
+  function kisiHucresi(k) {
+    if (!k.kullanici) return '<span class="yok">girişsiz</span>';
+    return kacis(k.kullanici) + (k.kullanici === benimEpostam() ? '<span class="sen">(sen)</span>' : '');
+  }
+
   function ciz(veri) {
     if (!veri.length) {
-      $('govde').innerHTML = '<tr><td colspan="4" class="lg-bos">Kayıt bulunamadı.</td></tr>';
+      $('govde').innerHTML = '<tr><td colspan="' + SUTUN + '" class="lg-bos">Kayıt bulunamadı.</td></tr>';
       return;
     }
-    $('govde').innerHTML = veri.map(k =>
-      '<tr><td class="zaman">' + kacis(zaman(k.created_at)) + '</td>'
-      + '<td><span class="cip ' + kacis(k.sayfa) + '">' + kacis(SEKME_AD[k.sayfa] || k.sayfa) + '</span></td>'
-      + '<td>' + kacis(k.olay) + '</td>'
-      + '<td class="detay">' + (k.detay ? kacis(k.detay) : '–') + '</td></tr>'
-    ).join('');
+    $('govde').innerHTML = veri.map(k => {
+      const sinif = UYARI_OLAYLARI.includes(k.olay) ? ' class="uyari"' : DIKKAT_OLAYLARI.includes(k.olay) ? ' class="dikkat"' : '';
+      return '<tr' + sinif + '><td class="zaman">' + kacis(zaman(k.created_at)) + '</td>'
+        + '<td class="kisi">' + kisiHucresi(k) + '</td>'
+        + '<td><span class="cip ' + kacis(k.sayfa) + '">' + kacis(SEKME_AD[k.sayfa] || k.sayfa) + '</span></td>'
+        + '<td class="olay">' + kacis(k.olay) + '</td>'
+        + '<td class="detay">' + (k.detay ? kacis(k.detay) : '–') + '</td></tr>';
+    }).join('');
   }
 
   function sayfaDurumu() {
@@ -212,34 +249,54 @@
     });
   }
 
+  // Kullanıcı filtresi: günlükte adı geçen kullanıcılar
+  async function kullanicilariDoldur() {
+    try {
+      const r = await fetch(SB + '?select=kullanici&kullanici=not.is.null&order=kullanici.asc&limit=5000', { headers: basliklar() });
+      if (!r.ok) return;
+      const liste = [...new Set((await r.json()).map(x => x.kullanici))];
+      const secili = $('fKullanici').value;
+      $('fKullanici').innerHTML = '<option value="">Tümü</option>'
+        + liste.map(e => '<option value="' + kacis(e) + '">' + kacis(e) + (e === benimEpostam() ? ' (sen)' : '') + '</option>').join('')
+        + '<option value="' + GIRISSIZ + '">Girişsiz (giriş sayfası)</option>';
+      if ([...$('fKullanici').options].some(o => o.value === secili)) $('fKullanici').value = secili;
+    } catch (e) {}
+  }
+
   async function ozet() {
     try {
-      const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
-      const [rT, rB, rS] = await Promise.all([
+      const bugun = encodeURIComponent(bugunISO());
+      const [rT, rB, rK, rF, rS] = await Promise.all([
         fetch(SB + '?select=id&limit=1', { headers: basliklar({ Prefer: 'count=exact' }) }),
-        fetch(SB + '?select=id&limit=1&created_at=gte.' + encodeURIComponent(bugun.toISOString()), { headers: basliklar({ Prefer: 'count=exact' }) }),
+        fetch(SB + '?select=id&limit=1&created_at=gte.' + bugun, { headers: basliklar({ Prefer: 'count=exact' }) }),
+        fetch(SB + '?select=kullanici&kullanici=not.is.null&created_at=gte.' + bugun + '&limit=5000', { headers: basliklar() }),
+        fetch(SB + '?select=id&limit=1&olay=eq.' + encodeURIComponent('Giriş başarısız') + '&created_at=gte.' + bugun, { headers: basliklar({ Prefer: 'count=exact' }) }),
         fetch(SB + '?select=created_at&order=created_at.desc&limit=1', { headers: basliklar() })
       ]);
       $('stToplam').textContent = sayimOku(rT).toLocaleString('tr-TR');
       $('stBugun').textContent = sayimOku(rB).toLocaleString('tr-TR');
+      $('stKisi').textContent = new Set((await rK.json()).map(x => x.kullanici)).size;
+      const basarisiz = sayimOku(rF);
+      $('stBasarisiz').textContent = basarisiz;
+      $('stBasarisiz').style.color = basarisiz ? '#f85149' : '';
       const son = await rS.json();
       $('stSon').textContent = son.length ? zaman(son[0].created_at) : 'Kayıt yok';
     } catch (e) {
-      $('stToplam').textContent = $('stBugun').textContent = $('stSon').textContent = '?';
+      ['stToplam', 'stBugun', 'stKisi', 'stBasarisiz', 'stSon'].forEach(id => { $(id).textContent = '?'; });
     }
   }
 
-  function yenileHepsi() { yukle(); ozet(); }
+  function yenileHepsi() { yukle(); ozet(); kullanicilariDoldur(); }
 
   async function csvIndir() {
-    const url = SB + '?select=created_at,sayfa,olay,detay' + sorgu(filtreler())
-      + '&order=' + siralaAlan + '.' + (artan ? 'asc' : 'desc') + '&limit=5000';
+    const url = SB + '?select=created_at,kullanici,sayfa,olay,detay' + sorgu(filtreler())
+      + '&order=' + siralama() + '&limit=5000';
     try {
       const r = await fetch(url, { headers: basliklar() });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const veri = await r.json();
-      const satirlar = [['Zaman', 'Sekme', 'Olay', 'Detay']]
-        .concat(veri.map(k => [zaman(k.created_at), SEKME_AD[k.sayfa] || k.sayfa, k.olay, k.detay || '']));
+      const satirlar = [['Zaman', 'Kullanıcı', 'Sekme', 'Olay', 'Detay']]
+        .concat(veri.map(k => [zaman(k.created_at), k.kullanici || 'girişsiz', SEKME_AD[k.sayfa] || k.sayfa, k.olay, k.detay || '']));
       // Türkçe Excel için ; ayırıcı ve UTF-8 BOM
       const csv = '\uFEFF' + satirlar.map(s => s.map(h => '"' + String(h).replace(/"/g, '""') + '"').join(';')).join('\r\n');
       const a = document.createElement('a');
@@ -253,9 +310,10 @@
   // ---- Olaylar ----
   function filtrele() { sayfa = 0; yukle(); }
   $('uygula').addEventListener('click', filtrele);
+  $('fKullanici').addEventListener('change', filtrele);
   $('fDetay').addEventListener('keydown', e => { if (e.key === 'Enter') filtrele(); });
   $('sifirla').addEventListener('click', () => {
-    $('fSayfa').value = ''; $('fOlay').value = ''; $('fDetay').value = ''; $('fBas').value = ''; $('fBit').value = '';
+    ['fKullanici', 'fSayfa', 'fOlay', 'fDetay', 'fBas', 'fBit'].forEach(id => { $(id).value = ''; });
     filtrele();
   });
   $('onceki').addEventListener('click', () => { if (sayfa > 0) { sayfa--; yukle(); } });
@@ -275,7 +333,7 @@
   });
 
   siralamaBasliklari();
-  // Sayfa görüntüleme kaydı kısa bir gecikmeyle düşsün, sonra listeyi getir
+  // Oturum doğrulanınca (ve sayfa görüntüleme kaydı düştükten sonra) listeyi getir
   window.oturumHazir.then(() => setTimeout(yenileHepsi, 300));
   </script>
 </body>
