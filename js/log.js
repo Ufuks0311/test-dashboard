@@ -4,7 +4,7 @@
   const LOG_KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
   const SAYFALAR = {
     '': 'genel-bakis', 'index.html': 'genel-bakis',
-    'sunucular.html': 'sunucular', 'subnet.html': 'subnet', 'kayitlar.html': 'kayitlar'
+    'sunucular.html': 'sunucular', 'subnet.html': 'subnet', 'kayitlar.html': 'kayitlar', 'bakim.html': 'bakim'
   };
   const SAYFA = SAYFALAR[location.pathname.split('/').pop()] || 'genel-bakis';
 
@@ -30,7 +30,8 @@
   document.addEventListener('click', function (e) {
     const btn = e.target.closest && e.target.closest('button');
     if (!btn) return;
-    if (OZEL_KAYITLI.indexOf(btn.id) !== -1 || btn.classList.contains('sn-kopya')) return;
+    if (t.dataset && t.dataset.log === 'ozel') return;
+    if (OZEL_KAYITLI.indexOf(btn.id) !== -1 || btn.classList.contains('sn-kopya') || btn.dataset.log === 'ozel') return;
     const ad = (btn.getAttribute('aria-label') || btn.textContent || btn.id || 'isimsiz düğme').trim().replace(/\s+/g, ' ');
     window.logYaz('Buton tıklandı', ad);
   }, true);

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bakım Anlaşmaları — IT Panosu</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .bk-kart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:1rem; margin-bottom:1.25rem; }
+    .bk-ust { display:flex; justify-content:flex-end; align-items:center; gap:.75rem; margin-bottom:1rem; }
+    .bk-filtre { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; background:var(--kart); padding:1rem; border-radius:12px; margin-bottom:.75rem; }
+    .bk-alan { display:flex; flex-direction:column; gap:.3rem; }
+    .bk-alan.genis { flex:1; min-width:220px; }
+    .bk-alan label, .bk-form label { font-size:.75rem; color:#8b949e; }
+    .bk-filtre input, .bk-filtre select, .bk-form input, .bk-form select, .bk-form textarea, .bk-giris-kutu input {
+      background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:8px;
+      padding:.55rem .7rem; font-size:.9rem; font-family:inherit; width:100%; }
+    .bk-filtre input:focus, .bk-filtre select:focus, .bk-form input:focus, .bk-form select:focus, .bk-form textarea:focus, .bk-giris-kutu input:focus { outline:none; border-color:var(--vurgu); }
+    input[type=date] { color-scheme:dark; }
+    .bk-btn { background:var(--vurgu); color:#04121f; border:none; border-radius:8px; padding:.6rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .bk-btn.ikincil { background:transparent; color:var(--metin); border:1px solid rgba(255,255,255,.2); font-weight:500; }
+    .bk-btn.tehlike { background:transparent; color:#f85149; border:1px solid rgba(248,81,73,.4); font-weight:500; }
+    .bk-btn.kucuk { padding:.3rem .6rem; font-size:.78rem; }
+    .bk-btn:hover { opacity:.88; }
+    .bk-btn:disabled { opacity:.4; cursor:default; }
+    .bk-bilgi { color:#8b949e; font-size:.85rem; margin:.25rem 0 .75rem; }
+    .bk-tablo-kap { overflow-x:auto; background:var(--kart); border-radius:12px; }
+    .bk-tablo { width:100%; border-collapse:collapse; font-size:.9rem; }
+    .bk-tablo th, .bk-tablo td { padding:.7rem .9rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); vertical-align:top; }
+    .bk-tablo th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; white-space:nowrap; }
+    .bk-tablo tbody tr:hover { background:rgba(255,255,255,.03); }
+    .bk-tablo .alt { color:#8b949e; font-size:.8rem; }
+    .bk-tablo .konu { max-width:280px; }
+    .bk-islem { display:flex; gap:.35rem; white-space:nowrap; }
+    .cip { display:inline-block; font-size:.75rem; font-weight:600; padding:.2rem .6rem; border-radius:999px; white-space:nowrap; }
+    .cip.aktif { color:#3ecf7a; background:rgba(62,207,122,.12); }
+    .cip.yakin { color:#e3b341; background:rgba(227,179,65,.14); }
+    .cip.dolmus { color:#f85149; background:rgba(248,81,73,.12); }
+    .cip.suresiz { color:#8b949e; background:rgba(139,148,158,.14); }
+    .bk-bos, .bk-yukleniyor { padding:2rem; text-align:center; color:#8b949e; }
+    .bk-hata { color:#f85149; font-size:.85rem; min-height:1.2em; }
+    .bk-giris { display:flex; justify-content:center; padding-top:2rem; }
+    .bk-giris-kutu { width:100%; max-width:380px; background:var(--kart); border-radius:14px; padding:1.75rem; display:flex; flex-direction:column; gap:.8rem; }
+    .bk-giris-kutu h2 { font-size:1.2rem; }
+    .bk-giris-kutu p { color:#8b949e; font-size:.85rem; }
+    dialog { background:var(--kart); color:var(--metin); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:0; width:95%; max-width:760px; }
+    dialog::backdrop { background:rgba(0,0,0,.6); }
+    .dlg-ic { padding:1.5rem; max-height:85vh; overflow-y:auto; }
+    .dlg-ic h2 { font-size:1.15rem; margin-bottom:1rem; }
+    .bk-form { display:grid; grid-template-columns:1fr 1fr; gap:.9rem 1rem; }
+    .bk-form .tam { grid-column:1 / -1; }
+    .bk-form > div { display:flex; flex-direction:column; gap:.3rem; }
+    .bk-form textarea { min-height:110px; resize:vertical; }
+    .bk-form .yildiz { color:#f85149; }
+    .bk-mevcut-dosya { font-size:.85rem; color:#c9d1d9; display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+    .bk-mevcut-dosya label { display:flex; gap:.35rem; align-items:center; color:#8b949e; font-size:.8rem; }
+    .bk-mevcut-dosya input { width:auto; }
+    .dlg-alt { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.25rem; align-items:center; }
+    .dlg-alt .bk-hata { margin-right:auto; }
+    .bk-detay { display:grid; grid-template-columns:170px 1fr; gap:.55rem 1rem; font-size:.9rem; }
+    .bk-detay dt { color:#8b949e; }
+    .bk-detay dd { word-break:break-word; }
+    .bk-detay dd.notlar { white-space:pre-wrap; }
+    .bk-detay a { color:var(--vurgu); }
+    @media (max-width:640px) { .bk-form { grid-template-columns:1fr; } .bk-detay { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo" title="DaVinci Teknoloji"></span>
+    <h1>Bakım Anlaşmaları</h1>
+    <nav>
+      <a href="index.html">Genel Bakış</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html" class="active">Bakım Anlaşmaları</a>
+    </nav>
+    <span id="saat" class="saat"></span>
+  </header>
+  <main>
+    <!-- Giriş ekranı -->
+    <section id="girisBolumu" class="bk-giris" hidden>
+      <div class="bk-giris-kutu">
+        <h2>Giriş yap</h2>
+        <p>Bu bölüm sözleşme ve iletişim bilgileri içerdiği için yalnızca yetkili kullanıcılara açıktır.</p>
+        <div class="bk-alan"><label for="gEposta">E-posta</label><input id="gEposta" type="email" autocomplete="username"></div>
+        <div class="bk-alan"><label for="gSifre">Şifre</label><input id="gSifre" type="password" autocomplete="current-password"></div>
+        <button class="bk-btn" id="girisBtn" data-log="ozel">Giriş yap</button>
+        <p class="bk-hata" id="girisHata"></p>
+      </div>
+    </section>
+
+    <!-- Uygulama -->
+    <section id="uygulama" hidden>
+      <div class="bk-ust">
+        <span class="bk-bilgi" id="kullaniciBilgi" style="margin:0"></span>
+        <button class="bk-btn ikincil kucuk" id="cikisBtn" data-log="ozel">Çıkış</button>
+      </div>
+
+      <section class="bk-kart-grid">
+        <div class="kart"><h2>Toplam Anlaşma</h2><p class="deger" id="stToplam">–</p></div>
+        <div class="kart"><h2>Aktif</h2><p class="deger" id="stAktif">–</p></div>
+        <div class="kart"><h2>30 Gün İçinde Bitecek</h2><p class="deger" id="stYakin" style="color:#e3b341">–</p></div>
+        <div class="kart"><h2>Süresi Dolmuş</h2><p class="deger" id="stDolmus" style="color:#f85149">–</p></div>
+      </section>
+
+      <div class="bk-filtre">
+        <div class="bk-alan genis"><label for="ara">Ara</label><input id="ara" type="search" placeholder="Sistem, bölüm, konu, firma, kişi, telefon, not…"></div>
+        <div class="bk-alan"><label for="fBolum">Bölüm</label><select id="fBolum"><option value="">Tümü</option></select></div>
+        <div class="bk-alan"><label for="fDurum">Durum</label>
+          <select id="fDurum">
+            <option value="">Tümü</option>
+            <option value="aktif">Aktif</option>
+            <option value="yakin">Yaklaşan (30 gün)</option>
+            <option value="dolmus">Süresi dolmuş</option>
+            <option value="suresiz">Süresiz</option>
+          </select></div>
+        <button class="bk-btn" id="yeniBtn">+ Yeni Anlaşma</button>
+      </div>
+      <p class="bk-bilgi" id="bilgi"></p>
+
+      <div class="bk-tablo-kap">
+        <table class="bk-tablo">
+          <thead><tr>
+            <th>Sistem</th><th>Bölüm</th><th>Konu</th><th>Firma / Kontak</th><th>Bitiş</th><th>Durum</th><th>Dosya</th><th></th>
+          </tr></thead>
+          <tbody id="govde"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Ekle / Düzenle penceresi -->
+  <dialog id="formDlg">
+    <form class="dlg-ic" id="anlasmaForm" novalidate>
+      <h2 id="formBaslik">Yeni Anlaşma</h2>
+      <div class="bk-form">
+        <div><label for="fSistem">İlgili sistem <span class="yildiz">*</span></label><input id="fSistem" required maxlength="120" placeholder="ör. Opera PMS"></div>
+        <div><label for="fBolumGir">İlgili bölüm <span class="yildiz">*</span></label><input id="fBolumGir" required maxlength="120" list="bolumListe" placeholder="ör. Ön Büro"><datalist id="bolumListe"></datalist></div>
+        <div class="tam"><label for="fKonu">Konusu <span class="yildiz">*</span></label><input id="fKonu" required maxlength="300" placeholder="ör. Yıllık yazılım bakım ve 7/24 destek"></div>
+        <div><label for="fFirma">Firma</label><input id="fFirma" maxlength="150"></div>
+        <div><label for="fKontak">Kontak kişi</label><input id="fKontak" maxlength="120"></div>
+        <div><label for="fTelefon">Telefon</label><input id="fTelefon" type="tel" maxlength="40"></div>
+        <div><label for="fEposta">E-posta</label><input id="fEposta" type="email" maxlength="150"></div>
+        <div class="tam"><label for="fAdres">Adres / diğer iletişim</label><input id="fAdres" maxlength="300"></div>
+        <div><label for="fBaslangic">Başlangıç tarihi</label><input id="fBaslangic" type="date"></div>
+        <div><label for="fBitis">Bitiş tarihi</label><input id="fBitis" type="date"></div>
+        <div class="tam"><label for="fDosya">Anlaşma metni (PDF, Word, JPG/PNG — en fazla 10 MB)</label>
+          <input id="fDosya" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+          <div class="bk-mevcut-dosya" id="mevcutDosya" hidden></div>
+        </div>
+        <div class="tam"><label for="fNotlar">Notlar</label><textarea id="fNotlar" maxlength="4000" placeholder="Yenileme koşulları, fiyat bilgisi, önemli maddeler…"></textarea></div>
+      </div>
+      <div class="dlg-alt">
+        <span class="bk-hata" id="formHata"></span>
+        <button type="button" class="bk-btn ikincil" id="vazgecBtn" data-log="ozel">Vazgeç</button>
+        <button type="submit" class="bk-btn" id="kaydetBtn" data-log="ozel">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Detay penceresi -->
+  <dialog id="detayDlg">
+    <div class="dlg-ic">
+      <h2 id="detayBaslik"></h2>
+      <dl class="bk-detay" id="detayIcerik"></dl>
+      <div class="dlg-alt">
+        <button type="button" class="bk-btn ikincil" id="detayKapat" data-log="ozel">Kapat</button>
+        <button type="button" class="bk-btn" id="detayDuzenle" data-log="ozel">Düzenle</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/log.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+  // ---- Supabase bağlantısı (giriş zorunlu) ----
+  const SB_URL = 'https://ayxjajcymhqslanqkpqd.supabase.co';
+  const SB_KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
+  const sb = window.supabase.createClient(SB_URL, SB_KEY);
+  const TABLO = 'bakim_anlasma', DEPO = 'sozlesmeler', UYARI_GUN = 30, MAKS_DOSYA = 10 * 1024 * 1024;
+  let kayitlar = [], duzenlenen = null, detaydaki = null, aktifKullanici = null;
+
+  const $ = id => document.getElementById(id);
+  const log = (o, d) => { if (window.logYaz) logYaz(o, d); };
+  function kacis(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  const kucult = s => String(s || '').toLocaleLowerCase('tr');
+  const tarih = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('tr-TR') : '–';
+  const zamanDamgasi = t => t ? new Date(t).toLocaleString('tr-TR') : '–';
+
+  function kalanGun(bitis) {
+    if (!bitis) return null;
+    const b = new Date(bitis + 'T00:00:00'), bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    return Math.round((b - bugun) / 86400000);
+  }
+  function durum(k) {
+    const g = kalanGun(k.bitis);
+    if (g === null) return { kod: 'suresiz', ad: 'Süresiz' };
+    if (g < 0) return { kod: 'dolmus', ad: 'Süresi doldu' };
+    if (g <= UYARI_GUN) return { kod: 'yakin', ad: g === 0 ? 'Bugün bitiyor' : g + ' gün kaldı' };
+    return { kod: 'aktif', ad: 'Aktif' };
+  }
+
+  // ---- Oturum ----
+  sb.auth.onAuthStateChange((_olay, oturum) => {
+    const kullanici = oturum ? oturum.user : null;
+    $('girisBolumu').hidden = !!kullanici;
+    $('uygulama').hidden = !kullanici;
+    if (kullanici && (!aktifKullanici || aktifKullanici.id !== kullanici.id)) {
+      aktifKullanici = kullanici;
+      $('kullaniciBilgi').textContent = 'Oturum: ' + kullanici.email;
+      yukle();
+    }
+    if (!kullanici) { aktifKullanici = null; kayitlar = []; $('govde').innerHTML = ''; }
+  });
+
+  async function girisYap() {
+    $('girisHata').textContent = '';
+    $('girisBtn').disabled = true;
+    const { error } = await sb.auth.signInWithPassword({ email: $('gEposta').value.trim(), password: $('gSifre').value });
+    $('girisBtn').disabled = false;
+    if (error) { $('girisHata').textContent = 'Giriş başarısız: e-posta veya şifre hatalı.'; log('Giriş başarısız'); return; }
+    $('gSifre').value = '';
+    log('Giriş yapıldı');
+  }
+  $('girisBtn').addEventListener('click', girisYap);
+  $('gSifre').addEventListener('keydown', e => { if (e.key === 'Enter') girisYap(); });
+  $('cikisBtn').addEventListener('click', async () => { await sb.auth.signOut(); log('Çıkış yapıldı'); });
+
+  // ---- Listeleme ----
+  async function yukle() {
+    $('govde').innerHTML = '<tr><td colspan="8" class="bk-yukleniyor">Yükleniyor…</td></tr>';
+    const { data, error } = await sb.from(TABLO).select('*')
+      .order('bitis', { ascending: true, nullsFirst: false }).order('id', { ascending: false }).limit(1000);
+    if (error) {
+      $('govde').innerHTML = '<tr><td colspan="8" class="bk-bos" style="color:#f85149">Kayıtlar yüklenemedi: ' + kacis(error.message) + '</td></tr>';
+      return;
+    }
+    kayitlar = data || [];
+    bolumleriDoldur(); ozet(); ciz();
+  }
+
+  function bolumleriDoldur() {
+    const bolumler = [...new Set(kayitlar.map(k => k.bolum).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    const secili = $('fBolum').value;
+    $('fBolum').innerHTML = '<option value="">Tümü</option>' + bolumler.map(b => '<option>' + kacis(b) + '</option>').join('');
+    if (bolumler.includes(secili)) $('fBolum').value = secili;
+    $('bolumListe').innerHTML = bolumler.map(b => '<option value="' + kacis(b) + '">').join('');
+  }
+
+  function ozet() {
+    const sayac = { aktif: 0, yakin: 0, dolmus: 0 };
+    kayitlar.forEach(k => { const d = durum(k).kod; if (sayac[d] !== undefined) sayac[d]++; });
+    $('stToplam').textContent = kayitlar.length;
+    $('stAktif').textContent = sayac.aktif + sayac.yakin;
+    $('stYakin').textContent = sayac.yakin;
+    $('stDolmus').textContent = sayac.dolmus;
+  }
+
+  function filtrelenmis() {
+    const kelimeler = kucult($('ara').value).split(/\s+/).filter(Boolean);
+    const bolum = $('fBolum').value, dur = $('fDurum').value;
+    return kayitlar.filter(k => {
+      if (bolum && k.bolum !== bolum) return false;
+      if (dur && durum(k).kod !== dur) return false;
+      if (!kelimeler.length) return true;
+      const metin = kucult([k.sistem, k.bolum, k.konu, k.firma, k.kontak_kisi, k.telefon, k.eposta, k.adres, k.notlar, k.dosya_adi].join(' '));
+      return kelimeler.every(w => metin.includes(w));
+    });
+  }
+
+  function ciz() {
+    const liste = filtrelenmis();
+    $('bilgi').textContent = liste.length + ' / ' + kayitlar.length + ' anlaşma gösteriliyor';
+    if (!liste.length) {
+      $('govde').innerHTML = '<tr><td colspan="8" class="bk-bos">' + (kayitlar.length ? 'Aramaya uyan anlaşma bulunamadı.' : 'Henüz anlaşma eklenmemiş. "+ Yeni Anlaşma" ile başlayın.') + '</td></tr>';
+      return;
+    }
+    $('govde').innerHTML = liste.map(k => {
+      const d = durum(k);
+      return '<tr>'
+        + '<td><strong>' + kacis(k.sistem) + '</strong></td>'
+        + '<td>' + kacis(k.bolum) + '</td>'
+        + '<td class="konu">' + kacis(k.konu) + '</td>'
+        + '<td>' + (kacis(k.firma) || '–') + (k.kontak_kisi ? '<br><span class="alt">' + kacis(k.kontak_kisi) + '</span>' : '') + '</td>'
+        + '<td style="white-space:nowrap">' + tarih(k.bitis) + '</td>'
+        + '<td><span class="cip ' + d.kod + '">' + kacis(d.ad) + '</span></td>'
+        + '<td>' + (k.dosya_yolu ? '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="dosya" data-id="' + k.id + '" title="' + kacis(k.dosya_adi) + '">Aç</button>' : '<span class="alt">–</span>') + '</td>'
+        + '<td><div class="bk-islem">'
+        + '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="detay" data-id="' + k.id + '">Detay</button>'
+        + '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + k.id + '">Düzenle</button>'
+        + '<button class="bk-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + k.id + '">Sil</button>'
+        + '</div></td></tr>';
+    }).join('');
+  }
+
+  $('ara').addEventListener('input', ciz);
+  $('fBolum').addEventListener('change', ciz);
+  $('fDurum').addEventListener('change', ciz);
+
+  $('govde').addEventListener('click', e => {
+    const b = e.target.closest('button[data-islem]');
+    if (!b) return;
+    const k = kayitlar.find(x => x.id === Number(b.dataset.id));
+    if (!k) return;
+    if (b.dataset.islem === 'detay') detayAc(k);
+    else if (b.dataset.islem === 'duzenle') formAc(k);
+    else if (b.dataset.islem === 'sil') sil(k);
+    else if (b.dataset.islem === 'dosya') dosyaAc(k);
+  });
+
+  // ---- Dosya ----
+  function guvenliAd(ad) {
+    return ad.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]/g, '_').slice(-100) || 'dosya';
+  }
+  async function dosyaAc(k) {
+    const pencere = window.open('', '_blank'); // açılır pencere engelleyicisine takılmasın diye önce aç
+    const { data, error } = await sb.storage.from(DEPO).createSignedUrl(k.dosya_yolu, 60);
+    if (error) { if (pencere) pencere.close(); alert('Dosya açılamadı: ' + error.message); return; }
+    if (pencere) pencere.location = data.signedUrl; else window.location = data.signedUrl;
+    log('Dosya açıldı', 'Kayıt #' + k.id);
+  }
+
+  // ---- Ekle / Düzenle ----
+  const alanlar = { fSistem: 'sistem', fBolumGir: 'bolum', fKonu: 'konu', fFirma: 'firma', fKontak: 'kontak_kisi',
+    fTelefon: 'telefon', fEposta: 'eposta', fAdres: 'adres', fBaslangic: 'baslangic', fBitis: 'bitis', fNotlar: 'notlar' };
+
+  function formAc(k) {
+    duzenlenen = k || null;
+    $('formBaslik').textContent = k ? 'Anlaşmayı Düzenle' : 'Yeni Anlaşma';
+    $('formHata').textContent = '';
+    Object.entries(alanlar).forEach(([id, alan]) => { $(id).value = k && k[alan] ? k[alan] : ''; });
+    $('fDosya').value = '';
+    if (k && k.dosya_yolu) {
+      $('mevcutDosya').hidden = false;
+      $('mevcutDosya').innerHTML = '<span>Mevcut dosya: ' + kacis(k.dosya_adi || 'dosya') + '</span>'
+        + '<label><input type="checkbox" id="dosyaKaldir" data-log="ozel"> Dosyayı kaldır</label>'
+        + '<span class="alt" style="color:#8b949e">(Yeni dosya seçersen eskisinin yerine geçer)</span>';
+    } else { $('mevcutDosya').hidden = true; $('mevcutDosya').innerHTML = ''; }
+    $('formDlg').showModal();
+    $('fSistem').focus();
+  }
+  $('yeniBtn').addEventListener('click', () => formAc(null));
+  $('vazgecBtn').addEventListener('click', () => $('formDlg').close());
+
+  $('anlasmaForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('formHata').textContent = '';
+    if (!$('anlasmaForm').reportValidity()) return;
+    const veri = {};
+    Object.entries(alanlar).forEach(([id, alan]) => { const v = $(id).value.trim(); veri[alan] = v === '' ? null : v; });
+    if (veri.baslangic && veri.bitis && veri.bitis < veri.baslangic) { $('formHata').textContent = 'Bitiş tarihi başlangıçtan önce olamaz.'; return; }
+    const dosya = $('fDosya').files[0];
+    if (dosya && dosya.size > MAKS_DOSYA) { $('formHata').textContent = 'Dosya 10 MB sınırını aşıyor.'; return; }
+
+    $('kaydetBtn').disabled = true; $('kaydetBtn').textContent = 'Kaydediliyor…';
+    let yeniYol = null;
+    try {
+      if (dosya) {
+        yeniYol = crypto.randomUUID() + '/' + guvenliAd(dosya.name);
+        const { error: yErr } = await sb.storage.from(DEPO).upload(yeniYol, dosya);
+        if (yErr) throw new Error('Dosya yüklenemedi: ' + yErr.message);
+        veri.dosya_yolu = yeniYol; veri.dosya_adi = dosya.name.slice(0, 200);
+      } else if (duzenlenen && $('dosyaKaldir') && $('dosyaKaldir').checked) {
+        veri.dosya_yolu = null; veri.dosya_adi = null;
+      }
+
+      let kayitId;
+      if (duzenlenen) {
+        const { error } = await sb.from(TABLO).update(veri).eq('id', duzenlenen.id);
+        if (error) throw error;
+        kayitId = duzenlenen.id;
+      } else {
+        const { data, error } = await sb.from(TABLO).insert(veri).select('id').single();
+        if (error) throw error;
+        kayitId = data.id;
+      }
+      // Değiştirilen ya da kaldırılan eski dosyayı depodan temizle
+      if (duzenlenen && duzenlenen.dosya_yolu && 'dosya_yolu' in veri && veri.dosya_yolu !== duzenlenen.dosya_yolu) {
+        await sb.storage.from(DEPO).remove([duzenlenen.dosya_yolu]);
+      }
+      log(duzenlenen ? 'Anlaşma güncellendi' : 'Anlaşma eklendi', 'Kayıt #' + kayitId);
+      $('formDlg').close();
+      yukle();
+    } catch (err) {
+      if (yeniYol) await sb.storage.from(DEPO).remove([yeniYol]); // yarım kalan yüklemeyi geri al
+      $('formHata').textContent = 'Kaydedilemedi: ' + (err.message || err);
+    } finally {
+      $('kaydetBtn').disabled = false; $('kaydetBtn').textContent = 'Kaydet';
+    }
+  });
+
+  // ---- Detay ----
+  function detayAc(k) {
+    detaydaki = k;
+    const d = durum(k);
+    $('detayBaslik').textContent = k.sistem + ' — ' + k.bolum;
+    const satirlar = [
+      ['Durum', '<span class="cip ' + d.kod + '">' + kacis(d.ad) + '</span>'],
+      ['Konusu', kacis(k.konu)],
+      ['Firma', kacis(k.firma) || '–'],
+      ['Kontak kişi', kacis(k.kontak_kisi) || '–'],
+      ['Telefon', k.telefon ? '<a href="tel:' + kacis(k.telefon.replace(/[^0-9+]/g, '')) + '">' + kacis(k.telefon) + '</a>' : '–'],
+      ['E-posta', k.eposta ? '<a href="mailto:' + kacis(k.eposta) + '">' + kacis(k.eposta) + '</a>' : '–'],
+      ['Adres / diğer', kacis(k.adres) || '–'],
+      ['Başlangıç', tarih(k.baslangic)],
+      ['Bitiş', tarih(k.bitis)],
+      ['Anlaşma metni', k.dosya_yolu ? '<button class="bk-btn ikincil kucuk" data-log="ozel" id="detayDosya">' + kacis(k.dosya_adi || 'Dosyayı aç') + '</button>' : '–'],
+      ['Notlar', kacis(k.notlar) || '–', 'notlar'],
+      ['Oluşturulma', zamanDamgasi(k.created_at)],
+      ['Son güncelleme', zamanDamgasi(k.updated_at)]
+    ];
+    $('detayIcerik').innerHTML = satirlar.map(s => '<dt>' + s[0] + '</dt><dd' + (s[2] ? ' class="' + s[2] + '"' : '') + '>' + s[1] + '</dd>').join('');
+    if ($('detayDosya')) $('detayDosya').addEventListener('click', () => dosyaAc(k));
+    $('detayDlg').showModal();
+    log('Anlaşma görüntülendi', 'Kayıt #' + k.id);
+  }
+  $('detayKapat').addEventListener('click', () => $('detayDlg').close());
+  $('detayDuzenle').addEventListener('click', () => { $('detayDlg').close(); if (detaydaki) formAc(detaydaki); });
+
+  // ---- Silme ----
+  async function sil(k) {
+    if (!confirm('"' + k.sistem + ' — ' + k.konu + '" anlaşması ve varsa dosyası kalıcı olarak silinsin mi?')) return;
+    const { error } = await sb.from(TABLO).delete().eq('id', k.id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    if (k.dosya_yolu) await sb.storage.from(DEPO).remove([k.dosya_yolu]);
+    log('Anlaşma silindi', 'Kayıt #' + k.id);
+    yukle();
+  }
+  </script>
+</body>
+</html>

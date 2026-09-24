@@ -34,6 +34,7 @@
     .cip.sunucular { color:#3ecf7a; background:rgba(62,207,122,.12); }
     .cip.subnet { color:#e3b341; background:rgba(227,179,65,.12); }
     .cip.kayitlar { color:#bc8cff; background:rgba(188,140,255,.12); }
+    .cip.bakim { color:#ff7b72; background:rgba(255,123,114,.12); }
     .lg-bos { padding:2rem; text-align:center; color:#8b949e; }
     .lg-hata { padding:2rem; text-align:center; color:#f85149; }
     .lg-sayfa { display:flex; gap:.75rem; align-items:center; justify-content:flex-end; margin-top:.75rem; }
@@ -46,7 +47,7 @@
     <h1>Kayıt Görüntüleyici</h1>
     <nav>
       <a href="index.html">Genel Bakış</a>
-      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html" class="active">Kayıtlar</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html" class="active">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a>
     </nav>
     <span id="saat" class="saat"></span>
   </header>
@@ -65,6 +66,7 @@
           <option value="sunucular">Sunucular</option>
           <option value="subnet">Subnet Hesaplama</option>
           <option value="kayitlar">Kayıtlar</option>
+          <option value="bakim">Bakım Anlaşmaları</option>
         </select></div>
       <div class="lg-alan"><label for="fOlay">Olay</label>
         <select id="fOlay">
@@ -79,6 +81,14 @@
           <option>Kopyalama başarısız</option>
           <option>Geçmiş temizlendi</option>
           <option>CSV indirildi</option>
+          <option>Giriş yapıldı</option>
+          <option>Giriş başarısız</option>
+          <option>Çıkış yapıldı</option>
+          <option>Anlaşma eklendi</option>
+          <option>Anlaşma güncellendi</option>
+          <option>Anlaşma silindi</option>
+          <option>Anlaşma görüntülendi</option>
+          <option>Dosya açıldı</option>
         </select></div>
       <div class="lg-alan"><label for="fDetay">Detay (içerir)</label><input id="fDetay" type="text" placeholder="ör. 192.168 veya web-01" size="18"></div>
       <div class="lg-alan"><label for="fBas">Başlangıç</label><input id="fBas" type="date"></div>
@@ -121,7 +131,7 @@
   const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/olay_log';
   const KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
   const SAYFA_BOYU = 25;
-  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama', 'kayitlar': 'Kayıtlar' };
+  const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama', 'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları' };
   let sayfa = 0, toplam = 0, siralaAlan = 'created_at', artan = false, otoZamanlayici = null;
 
   const $ = id => document.getElementById(id);
