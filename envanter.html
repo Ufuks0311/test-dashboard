@@ -372,7 +372,7 @@
         + '<td><span class="cip ' + g.renk + '">' + kacis(g.ad) + '</span></td>'
         + '<td><div class="en-islem">'
         + '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="detay" data-id="' + c.id + '">Detay</button>'
-        + '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + c.id + '">Düzenle</button>'
+        + (window.izleyiciMi ? '' : '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + c.id + '">Düzenle</button>')
         + (window.kullaniciAdmin ? '<button class="en-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + c.id + '">Sil</button>' : '')
         + '</div></td></tr>';
     }).join('');
@@ -482,7 +482,7 @@
 
   function veritabaniHatasi(err) {
     const m = (err && err.message) || String(err);
-    if (/row-level security|permission denied/i.test(m)) return 'Bu işlem için yetkiniz yok (cihaz silme yalnızca admin kullanıcılara açık).';
+    if (/row-level security|permission denied/i.test(m)) return 'Bu işlem için yetkiniz yok. (İzleyici rolü salt okunur; cihaz silme yalnızca admin kullanıcılara açıktır.)';
     if (/cihaz_demirbas_idx/.test(m)) return 'Bu demirbaş numarası başka bir cihazda kayıtlı.';
     if (/cihaz_seri_idx/.test(m)) return 'Bu seri numarası başka bir cihazda kayıtlı.';
     if (/cihaz_mac_idx/.test(m)) return 'Bu MAC adresi başka bir cihazda kayıtlı.';
@@ -775,6 +775,7 @@
     $('stGarantiBaslik').textContent = 'Garantisi Yaklaşan (' + GARANTI_UYARI_GUN + ' gün)';
     $('optGarantiYakin').textContent = 'Yaklaşan (' + GARANTI_UYARI_GUN + ' gün)';
     $('uygulama').hidden = false;
+    if (window.izleyiciMi) { $('yeniBtn').hidden = true; $('iceBtn').hidden = true; }
     yukle();
   });
   </script>

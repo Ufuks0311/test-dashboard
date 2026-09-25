@@ -145,12 +145,35 @@
         <!-- Kullanıcı Yetkileri (sadece admin görür/düzenler) -->
         <section class="ay-kart" id="yetkiKart" hidden>
           <h2>Kullanıcı Yetkileri</h2>
-          <p class="aciklama">Bu tabloyu yalnızca yöneticiler (admin) görebilir ve düzenleyebilir. Admin, cihaz silme dahil panodaki tüm işlemleri yapabilir. Yeni kullanıcı eklemek için Supabase panelinden Authentication → Users kullanılır.</p>
+          <p class="aciklama">Bu tabloyu yalnızca yöneticiler (admin) görebilir ve düzenleyebilir.
+            <b>Admin:</b> her şeyi yapabilir, cihaz/anlaşma siler, kullanıcı yönetir.
+            <b>Kullanıcı:</b> ekler ve düzenler, silemez. <b>İzleyici:</b> sadece görüntüler.</p>
           <table class="ay-tablo" id="yetkiTablo">
-            <thead><tr><th>E-posta</th><th>Admin</th></tr></thead>
+            <thead><tr><th>E-posta</th><th>Rol</th></tr></thead>
             <tbody><tr><td colspan="2" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
           </table>
           <p class="ay-sonuc" id="yetkiSonuc"></p>
+
+          <p class="ay-alt-baslik">Yeni Kullanıcı Ekle</p>
+          <div class="ay-alan">
+            <label for="ykEposta">E-posta</label>
+            <input id="ykEposta" type="email" maxlength="150" placeholder="ornek@davinci.com.tr">
+          </div>
+          <div class="ay-alan">
+            <label for="ykSifre">Geçici şifre</label>
+            <input id="ykSifre" type="password" maxlength="72" placeholder="en az 8 karakter">
+            <label style="display:flex;gap:.35rem;align-items:center;font-size:.8rem;color:#8b949e;margin-top:.3rem"><input type="checkbox" id="ykSifreGoster" data-log="ozel" style="width:auto"> Şifreyi göster</label>
+          </div>
+          <div class="ay-alan">
+            <label for="ykRol">Rol</label>
+            <select id="ykRol">
+              <option value="kullanici" selected>Kullanıcı</option>
+              <option value="izleyici">İzleyici</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <button class="ay-btn" id="ykEkleBtn" data-log="ozel">Kullanıcı Ekle</button>
+          <p class="ay-sonuc" id="ykSonuc"></p>
         </section>
 
         <!-- Test ve durum -->
@@ -540,34 +563,74 @@
   });
 
   // ---- Kullanıcı Yetkileri (sadece admin düzenleyebilir) ----
+  const ROL_ADI = { admin: 'Admin', kullanici: 'Kullanıcı', izleyici: 'İzleyici' };
   function yetkiMesaj(m, tur) { $('yetkiSonuc').className = 'ay-sonuc ' + (tur || ''); $('yetkiSonuc').textContent = m; }
   async function yetkiTablosuYukle() {
-    const { data, error } = await sb.from('kullanici').select('id,eposta,admin').order('eposta');
+    const { data, error } = await sb.from('kullanici').select('id,eposta,rol').order('eposta');
     if (error) { $('yetkiTablo').querySelector('tbody').innerHTML = '<tr><td colspan="2" style="color:#f85149">Yüklenemedi: ' + kacis(error.message) + '</td></tr>'; return; }
-    $('yetkiTablo').querySelector('tbody').innerHTML = (data || []).map(k =>
-      '<tr><td>' + kacis(k.eposta) + (window.aktifKullanici && k.id === window.aktifKullanici.id ? ' <span style="color:#8b949e;font-size:.78rem">(sen)</span>' : '') + '</td>'
-      + '<td><input type="checkbox" data-log="ozel" data-yetki-id="' + k.id + '" data-eposta="' + kacis(k.eposta) + '" ' + (k.admin ? 'checked' : '') + '></td></tr>'
-    ).join('') || '<tr><td colspan="2" style="color:#8b949e">Kullanıcı bulunamadı.</td></tr>';
+    $('yetkiTablo').querySelector('tbody').innerHTML = (data || []).map(k => {
+      const secenekler = Object.entries(ROL_ADI).map(([v, ad]) => '<option value="' + v + '"' + (k.rol === v ? ' selected' : '') + '>' + ad + '</option>').join('');
+      return '<tr><td>' + kacis(k.eposta) + (window.aktifKullanici && k.id === window.aktifKullanici.id ? ' <span style="color:#8b949e;font-size:.78rem">(sen)</span>' : '') + '</td>'
+        + '<td><select data-log="ozel" data-yetki-id="' + k.id + '" data-eposta="' + kacis(k.eposta) + '">' + secenekler + '</select></td></tr>';
+    }).join('') || '<tr><td colspan="2" style="color:#8b949e">Kullanıcı bulunamadı.</td></tr>';
   }
   $('yetkiTablo').addEventListener('change', async e => {
-    const cb = e.target.closest('input[type=checkbox][data-yetki-id]');
-    if (!cb) return;
-    cb.disabled = true;
-    const yeni = cb.checked;
-    const { error } = await sb.from('kullanici').update({ admin: yeni }).eq('id', cb.dataset.yetkiId);
-    cb.disabled = false;
+    const sel = e.target.closest('select[data-yetki-id]');
+    if (!sel) return;
+    const eski = [...sel.options].find(o => o.defaultSelected).value, yeni = sel.value;
+    sel.disabled = true;
+    const { error } = await sb.from('kullanici').update({ rol: yeni }).eq('id', sel.dataset.yetkiId);
+    sel.disabled = false;
     if (error) {
-      cb.checked = !yeni;
+      sel.value = eski;
       yetkiMesaj(/en az bir admin/i.test(error.message) ? error.message : 'Güncellenemedi: ' + error.message, 'hata');
       return;
     }
-    yetkiMesaj('"' + cb.dataset.eposta + '" için admin yetkisi ' + (yeni ? 'verildi' : 'kaldırıldı') + '.', 'ok');
-    log('Yetki güncellendi', cb.dataset.eposta + ': admin ' + (yeni ? 'açıldı' : 'kapandı'));
+    sel.querySelectorAll('option').forEach(o => { o.defaultSelected = o.value === yeni; });
+    yetkiMesaj('"' + sel.dataset.eposta + '" için rol "' + ROL_ADI[yeni] + '" olarak ayarlandı.', 'ok');
+    log('Yetki güncellendi', sel.dataset.eposta + ': ' + ROL_ADI[eski] + ' → ' + ROL_ADI[yeni]);
   });
 
-  window.yetkiHazir.then(admin => {
+  $('ykSifreGoster').addEventListener('change', e => { $('ykSifre').type = e.target.checked ? 'text' : 'password'; });
+
+  async function ykBaslikliCevap(r) {
+    let govde = null;
+    try { govde = await r.json(); } catch (e) {}
+    return { tamam: r.ok, hata: (govde && govde.error) || ('HTTP ' + r.status), veri: govde };
+  }
+  $('ykEkleBtn').addEventListener('click', async () => {
+    const eposta = $('ykEposta').value.trim().toLowerCase(), sifre = $('ykSifre').value, rol = $('ykRol').value;
+    const sonuc = $('ykSonuc');
+    if (!EPOSTA_RE.test(eposta)) { sonuc.className = 'ay-sonuc hata'; sonuc.textContent = 'Geçerli bir e-posta adresi girin.'; return; }
+    if (sifre.length < 8) { sonuc.className = 'ay-sonuc hata'; sonuc.textContent = 'Şifre en az 8 karakter olmalı.'; return; }
+    $('ykEkleBtn').disabled = true; sonuc.className = 'ay-sonuc bekle'; sonuc.textContent = 'Oluşturuluyor…';
+    try {
+      const r = await fetch('https://ayxjajcymhqslanqkpqd.supabase.co/functions/v1/kullanici-ekle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr', Authorization: 'Bearer ' + window.oturumToken },
+        body: JSON.stringify({ eposta, sifre, rol })
+      });
+      const c = await ykBaslikliCevap(r);
+      if (!c.tamam) { sonuc.className = 'ay-sonuc hata'; sonuc.textContent = c.hata; return; }
+      sonuc.className = 'ay-sonuc ok'; sonuc.textContent = '"' + eposta + '" eklendi (' + ROL_ADI[rol] + '). Giriş bilgilerini kendisine ilet.';
+      $('ykEposta').value = ''; $('ykSifre').value = ''; $('ykRol').value = 'kullanici';
+      log('Kullanıcı eklendi', eposta + ' (' + ROL_ADI[rol] + ')');
+      yetkiTablosuYukle();
+    } catch (err) {
+      sonuc.className = 'ay-sonuc hata';
+      sonuc.textContent = 'Sunucuya ulaşılamadı (Edge Function kurulu mu?): ' + err.message;
+    } finally {
+      $('ykEkleBtn').disabled = false;
+    }
+  });
+
+  window.yetkiHazir.then(rol => {
     yukle(); turlarYukle(); bolumlerYukle();
-    if (admin) { $('yetkiKart').hidden = false; yetkiTablosuYukle(); }
+    if (rol === 'admin') { $('yetkiKart').hidden = false; yetkiTablosuYukle(); }
+    if (rol === 'izleyici') {
+      document.querySelectorAll('#icerik input, #icerik select, #icerik textarea, #icerik button').forEach(el => el.disabled = true);
+      $('kaydetDurum').textContent = 'İzleyici rolündesiniz; ayarlar salt okunur.';
+    }
   });
   </script>
 </body>

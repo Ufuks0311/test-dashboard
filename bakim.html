@@ -195,6 +195,7 @@
     $('stYakinBaslik').textContent = UYARI_GUN + ' Gün İçinde Bitecek';
     $('optYakin').textContent = 'Yaklaşan (' + UYARI_GUN + ' gün)';
     $('uygulama').hidden = false;
+    if (window.izleyiciMi) { $('yeniBtn').hidden = true; }
     yukle();
   });
 
@@ -287,7 +288,7 @@
         + '<td>' + (k.dosya_yolu ? '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="dosya" data-id="' + k.id + '" title="' + kacis(k.dosya_adi) + '">Aç</button>' : '<span class="alt">–</span>') + '</td>'
         + '<td><div class="bk-islem">'
         + '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="detay" data-id="' + k.id + '">Detay</button>'
-        + '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + k.id + '">Düzenle</button>'
+        + (window.izleyiciMi ? '' : '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + k.id + '">Düzenle</button>')
         + (window.kullaniciAdmin ? '<button class="bk-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + k.id + '">Sil</button>' : '')
         + '</div></td></tr>';
     }).join('');
@@ -420,7 +421,7 @@
 
   function veritabaniHatasi(err) {
     const m = (err && err.message) || String(err);
-    if (/row-level security|permission denied/i.test(m)) return 'Bu işlem için yetkiniz yok (anlaşma silme yalnızca admin kullanıcılara açık).';
+    if (/row-level security|permission denied/i.test(m)) return 'Bu işlem için yetkiniz yok. (İzleyici rolü salt okunur; anlaşma silme yalnızca admin kullanıcılara açıktır.)';
     return m;
   }
 
