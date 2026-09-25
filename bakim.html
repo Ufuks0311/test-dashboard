@@ -187,7 +187,8 @@
   }
 
   // ---- Oturum: ortak giriş (js/auth.js) — ayrıca giriş istenmez ----
-  window.oturumHazir.then(async oturum => {
+  window.yetkiHazir.then(async () => {
+    const oturum = { user: window.aktifKullanici };
     aktifKullanici = oturum.user;
     const { data } = await sb.from('sistem_ayar').select('bakim_uyari_gun').eq('id', 1).maybeSingle();
     if (data && data.bakim_uyari_gun) UYARI_GUN = data.bakim_uyari_gun;
@@ -287,7 +288,7 @@
         + '<td><div class="bk-islem">'
         + '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="detay" data-id="' + k.id + '">Detay</button>'
         + '<button class="bk-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + k.id + '">Düzenle</button>'
-        + '<button class="bk-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + k.id + '">Sil</button>'
+        + (window.kullaniciAdmin ? '<button class="bk-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + k.id + '">Sil</button>' : '')
         + '</div></td></tr>';
     }).join('');
   }
@@ -417,11 +418,18 @@
   $('detayKapat').addEventListener('click', () => $('detayDlg').close());
   $('detayDuzenle').addEventListener('click', () => { $('detayDlg').close(); if (detaydaki) formAc(detaydaki); });
 
-  // ---- Silme ----
+  function veritabaniHatasi(err) {
+    const m = (err && err.message) || String(err);
+    if (/row-level security|permission denied/i.test(m)) return 'Bu işlem için yetkiniz yok (anlaşma silme yalnızca admin kullanıcılara açık).';
+    return m;
+  }
+
+  // ---- Silme (sadece admin) ----
   async function sil(k) {
+    if (!window.kullaniciAdmin) { alert('Anlaşma silme yetkiniz yok. Bu işlem yalnızca admin kullanıcılar tarafından yapılabilir.'); return; }
     if (!confirm('"' + k.sistem + ' — ' + k.konu + '" anlaşması ve varsa dosyası kalıcı olarak silinsin mi?')) return;
     const { error } = await sb.from(TABLO).delete().eq('id', k.id);
-    if (error) { alert('Silinemedi: ' + error.message); return; }
+    if (error) { alert('Silinemedi: ' + veritabaniHatasi(error)); return; }
     if (k.dosya_yolu) await sb.storage.from(DEPO).remove([k.dosya_yolu]);
     log('Anlaşma silindi', 'Kayıt #' + k.id);
     yukle();
