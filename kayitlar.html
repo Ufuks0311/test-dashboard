@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kayıtlar — IT Panosu</title>
+  <title>Loglar — IT Panosu</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/auth.js"></script>
@@ -55,10 +55,10 @@
 <body>
   <header>
     <span class="logo" title="DaVinci Teknoloji"></span>
-    <h1>Kayıt Görüntüleyici</h1>
+    <h1>Loglar</h1>
     <nav>
-      <a href="index.html">Genel Bakış</a>
-      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html" class="active">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="envanter.html">Envanter Listesi</a> <a href="ayarlar.html">Ayarlar</a>
+      <a href="kayitlar.html" class="active">Loglar</a>
+      <a href="index.html">Genel Bakış</a> <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="envanter.html">Envanter Listesi</a> <a href="ayarlar.html">Ayarlar</a>
     </nav>
     <span id="saat" class="saat"></span>
   </header>
@@ -80,7 +80,7 @@
           <option value="genel-bakis">Genel Bakış</option>
           <option value="sunucular">Sunucular</option>
           <option value="subnet">Subnet Hesaplama</option>
-          <option value="kayitlar">Kayıtlar</option>
+          <option value="kayitlar">Loglar</option>
           <option value="bakim">Bakım Anlaşmaları</option>
           <option value="giris">Giriş</option>
           <option value="envanter">Envanter</option>
@@ -177,7 +177,7 @@
   const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/olay_log';
   const SAYFA_BOYU = 25, SUTUN = 5;
   const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama',
-    'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş', 'ayarlar': 'Ayarlar', 'envanter': 'Envanter' };
+    'kayitlar': 'Loglar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş', 'ayarlar': 'Ayarlar', 'envanter': 'Envanter' };
   const UYARI_OLAYLARI = ['Giriş başarısız', 'Kopyalama başarısız'];
   const DIKKAT_OLAYLARI = ['Oturum zaman aşımı', 'Anlaşma silindi', 'Geçmiş temizlendi'];
   const GIRISSIZ = '__girissiz__';
