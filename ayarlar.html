@@ -74,7 +74,16 @@
             <button class="ay-btn ikincil" id="aliciEkle" data-log="ozel">Ekle</button>
           </div>
           <p class="ay-sonuc hata" id="aliciHata"></p>
-          <p class="ay-not">Resend'de alan adı (ör. davinci.com.tr) doğrulanana kadar e-postalar yalnızca Resend hesabını açtığın adrese ulaşır. Diğer adresler için gönderim reddedilir; nedenini aşağıdaki test sonucunda görebilirsin.</p>
+          <div class="ay-alan" style="margin-top:.5rem">
+            <label for="gonderenAd">Gönderen adı</label>
+            <input id="gonderenAd" type="text" maxlength="60" placeholder="IT Panosu">
+          </div>
+          <div class="ay-alan">
+            <label for="gonderenEposta">Gönderen e-posta adresi</label>
+            <input id="gonderenEposta" type="email" maxlength="150" placeholder="bildirim@davinci.com.tr">
+            <span class="ipucu">Resend'de doğrulanmış alan adından olmalı (davinci.com.tr). Yanıtların ulaşması için gerçekten var olan bir adres seçmen önerilir.</span>
+          </div>
+          <p class="ay-not" id="gonderenNot" hidden>Gönderen hâlâ Resend'in deneme adresi (onboarding@resend.dev). Bu adresle yalnızca Resend hesap sahibine gönderim yapılabilir; diğer alıcılar reddedilir.</p>
         </section>
 
         <!-- Hatırlatma zamanlaması -->
@@ -189,6 +198,9 @@
   function formaDoldur() {
     alicilar = [...kayitli.h.alicilar];
     aliciCiz();
+    const g = String(kayitli.h.gonderen || '').match(/^\s*(.*?)\s*<\s*([^>]+?)\s*>\s*$/);
+    $('gonderenAd').value = g ? g[1] : '';
+    $('gonderenEposta').value = g ? g[2] : String(kayitli.h.gonderen || '').trim();
     $('aktif').checked = kayitli.h.aktif;
     $('esikler').value = kayitli.h.esikler.join(', ');
     $('saatSec').value = kayitli.s.hatirlatma_saati;
@@ -248,6 +260,12 @@
     const oturum = parseInt($('oturum').value, 10), uyari = parseInt($('uyariGun').value, 10);
     const hatalar = [];
     if (!alicilar.length) hatalar.push('En az bir alıcı e-postası gerekli.');
+    const gAd = $('gonderenAd').value.trim().replace(/[<>"]/g, ''), gEposta = $('gonderenEposta').value.trim().toLowerCase();
+    const gGecerli = EPOSTA_RE.test(gEposta);
+    if (!gGecerli) hatalar.push('Gönderen e-posta adresi geçersiz.');
+    $('gonderenEposta').classList.toggle('hatali', !gGecerli);
+    $('gonderenNot').hidden = !/@resend\.dev$/.test(gEposta);
+    const gonderen = gGecerli ? (gAd ? gAd + ' <' + gEposta + '>' : gEposta) : kayitli.h.gonderen;
     if (esik.hata) hatalar.push(esik.hata);
     if (!(oturum >= 2 && oturum <= 120)) hatalar.push('Otomatik çıkış süresi 2–120 dakika olmalı.');
     if (!(uyari >= 1 && uyari <= 365)) hatalar.push('Uyarı günü 1–365 arası olmalı.');
@@ -256,7 +274,7 @@
     $('uyariGun').classList.toggle('hatali', !(uyari >= 1 && uyari <= 365));
     return {
       hatalar,
-      h: { alicilar: [...alicilar], aktif: $('aktif').checked, esikler: esik.deger || kayitli.h.esikler },
+      h: { alicilar: [...alicilar], aktif: $('aktif').checked, esikler: esik.deger || kayitli.h.esikler, gonderen },
       s: { hatirlatma_saati: parseInt($('saatSec').value, 10), oturum_suresi_dk: oturum, bakim_uyari_gun: uyari }
     };
   }
@@ -265,6 +283,7 @@
   function farklar(f) {
     const d = [];
     if (!ESIT(f.h.alicilar, kayitli.h.alicilar)) d.push('Alıcılar: ' + kayitli.h.alicilar.join(', ') + ' → ' + f.h.alicilar.join(', '));
+    if (f.h.gonderen !== kayitli.h.gonderen) d.push('Gönderen: ' + kayitli.h.gonderen + ' → ' + f.h.gonderen);
     if (f.h.aktif !== kayitli.h.aktif) d.push('Hatırlatmalar: ' + (f.h.aktif ? 'açık' : 'kapalı'));
     if (!ESIT(f.h.esikler, kayitli.h.esikler)) d.push('Eşikler: ' + kayitli.h.esikler.join(',') + ' → ' + f.h.esikler.join(','));
     if (f.s.hatirlatma_saati !== kayitli.s.hatirlatma_saati) d.push('Gönderim saati: ' + kayitli.s.hatirlatma_saati + ':00 → ' + f.s.hatirlatma_saati + ':00');
@@ -286,7 +305,7 @@
     $('testBtn').disabled = !!d.length; // test, kayıtlı ayarlarla çalışır
     $('testBtn').title = d.length ? 'Önce değişiklikleri kaydedin' : '';
   }
-  ['aktif', 'esikler', 'saatSec', 'oturum', 'uyariGun'].forEach(id => {
+  ['gonderenAd', 'gonderenEposta', 'aktif', 'esikler', 'saatSec', 'oturum', 'uyariGun'].forEach(id => {
     $(id).addEventListener('input', degisiklikKontrol);
     $(id).addEventListener('change', degisiklikKontrol);
   });
@@ -307,7 +326,7 @@
     if (!d.length) return;
     $('kaydetBtn').disabled = true; $('kaydetBtn').textContent = 'Kaydediliyor…';
     try {
-      const hDegisti = !ESIT(f.h, { alicilar: kayitli.h.alicilar, aktif: kayitli.h.aktif, esikler: kayitli.h.esikler });
+      const hDegisti = !ESIT(f.h, { alicilar: kayitli.h.alicilar, aktif: kayitli.h.aktif, esikler: kayitli.h.esikler, gonderen: kayitli.h.gonderen });
       const sDegisti = !ESIT(f.s, { hatirlatma_saati: kayitli.s.hatirlatma_saati, oturum_suresi_dk: kayitli.s.oturum_suresi_dk, bakim_uyari_gun: kayitli.s.bakim_uyari_gun });
       if (hDegisti) {
         const r = await sb.from('hatirlatma_ayar').update(f.h).eq('id', 1).select().single();
