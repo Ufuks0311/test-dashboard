@@ -142,6 +142,17 @@
           <p class="ay-sonuc" id="bolumSonuc"></p>
         </section>
 
+        <!-- Kullanıcı Yetkileri (sadece admin görür/düzenler) -->
+        <section class="ay-kart" id="yetkiKart" hidden>
+          <h2>Kullanıcı Yetkileri</h2>
+          <p class="aciklama">Bu tabloyu yalnızca yöneticiler (admin) görebilir ve düzenleyebilir. Admin, cihaz silme dahil panodaki tüm işlemleri yapabilir. Yeni kullanıcı eklemek için Supabase panelinden Authentication → Users kullanılır.</p>
+          <table class="ay-tablo" id="yetkiTablo">
+            <thead><tr><th>E-posta</th><th>Admin</th></tr></thead>
+            <tbody><tr><td colspan="2" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
+          </table>
+          <p class="ay-sonuc" id="yetkiSonuc"></p>
+        </section>
+
         <!-- Test ve durum -->
         <section class="ay-kart">
           <h2>Test ve Durum</h2>
@@ -528,7 +539,36 @@
     }
   });
 
-  window.oturumHazir.then(() => { yukle(); turlarYukle(); bolumlerYukle(); });
+  // ---- Kullanıcı Yetkileri (sadece admin düzenleyebilir) ----
+  function yetkiMesaj(m, tur) { $('yetkiSonuc').className = 'ay-sonuc ' + (tur || ''); $('yetkiSonuc').textContent = m; }
+  async function yetkiTablosuYukle() {
+    const { data, error } = await sb.from('kullanici').select('id,eposta,admin').order('eposta');
+    if (error) { $('yetkiTablo').querySelector('tbody').innerHTML = '<tr><td colspan="2" style="color:#f85149">Yüklenemedi: ' + kacis(error.message) + '</td></tr>'; return; }
+    $('yetkiTablo').querySelector('tbody').innerHTML = (data || []).map(k =>
+      '<tr><td>' + kacis(k.eposta) + (window.aktifKullanici && k.id === window.aktifKullanici.id ? ' <span style="color:#8b949e;font-size:.78rem">(sen)</span>' : '') + '</td>'
+      + '<td><input type="checkbox" data-log="ozel" data-yetki-id="' + k.id + '" data-eposta="' + kacis(k.eposta) + '" ' + (k.admin ? 'checked' : '') + '></td></tr>'
+    ).join('') || '<tr><td colspan="2" style="color:#8b949e">Kullanıcı bulunamadı.</td></tr>';
+  }
+  $('yetkiTablo').addEventListener('change', async e => {
+    const cb = e.target.closest('input[type=checkbox][data-yetki-id]');
+    if (!cb) return;
+    cb.disabled = true;
+    const yeni = cb.checked;
+    const { error } = await sb.from('kullanici').update({ admin: yeni }).eq('id', cb.dataset.yetkiId);
+    cb.disabled = false;
+    if (error) {
+      cb.checked = !yeni;
+      yetkiMesaj(/en az bir admin/i.test(error.message) ? error.message : 'Güncellenemedi: ' + error.message, 'hata');
+      return;
+    }
+    yetkiMesaj('"' + cb.dataset.eposta + '" için admin yetkisi ' + (yeni ? 'verildi' : 'kaldırıldı') + '.', 'ok');
+    log('Yetki güncellendi', cb.dataset.eposta + ': admin ' + (yeni ? 'açıldı' : 'kapandı'));
+  });
+
+  window.yetkiHazir.then(admin => {
+    yukle(); turlarYukle(); bolumlerYukle();
+    if (admin) { $('yetkiKart').hidden = false; yetkiTablosuYukle(); }
+  });
   </script>
 </body>
 </html>

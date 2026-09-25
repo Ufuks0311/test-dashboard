@@ -373,7 +373,7 @@
         + '<td><div class="en-islem">'
         + '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="detay" data-id="' + c.id + '">Detay</button>'
         + '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + c.id + '">Düzenle</button>'
-        + '<button class="en-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + c.id + '">Sil</button>'
+        + (window.kullaniciAdmin ? '<button class="en-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + c.id + '">Sil</button>' : '')
         + '</div></td></tr>';
     }).join('');
   }
@@ -482,6 +482,7 @@
 
   function veritabaniHatasi(err) {
     const m = (err && err.message) || String(err);
+    if (/row-level security|permission denied/i.test(m)) return 'Bu işlem için yetkiniz yok (cihaz silme yalnızca admin kullanıcılara açık).';
     if (/cihaz_demirbas_idx/.test(m)) return 'Bu demirbaş numarası başka bir cihazda kayıtlı.';
     if (/cihaz_seri_idx/.test(m)) return 'Bu seri numarası başka bir cihazda kayıtlı.';
     if (/cihaz_mac_idx/.test(m)) return 'Bu MAC adresi başka bir cihazda kayıtlı.';
@@ -594,11 +595,12 @@
   $('detayKapat').addEventListener('click', () => $('detayDlg').close());
   $('detayDuzenle').addEventListener('click', () => { $('detayDlg').close(); if (detaydaki) formAc(detaydaki); });
 
-  // ---- Silme ----
+  // ---- Silme (sadece admin) ----
   async function sil(c) {
+    if (!window.kullaniciAdmin) { alert('Cihaz silme yetkiniz yok. Bu işlem yalnızca admin kullanıcılar tarafından yapılabilir.'); return; }
     if (!confirm(c.demirbas_no + ' (' + c.marka + ' ' + c.model + ') envanterden kalıcı olarak silinsin mi?\n\nNot: Hurdaya ayrılan ya da kaybolan cihazlar için silmek yerine durumunu değiştirmen, geçmişin korunması açısından daha iyidir.')) return;
     const { error } = await sb.from(TABLO).delete().eq('id', c.id);
-    if (error) { alert('Silinemedi: ' + error.message); return; }
+    if (error) { alert('Silinemedi: ' + veritabaniHatasi(error)); return; }
     if (c.dosya_yolu) await sb.storage.from(DEPO).remove([c.dosya_yolu]);
     log('Cihaz silindi', c.demirbas_no);
     yukle();
@@ -767,7 +769,7 @@
   });
 
   // ---- Başlangıç ----
-  window.oturumHazir.then(async () => {
+  window.yetkiHazir.then(async () => {
     const { data } = await sb.from('sistem_ayar').select('bakim_uyari_gun').eq('id', 1).maybeSingle();
     if (data && data.bakim_uyari_gun) GARANTI_UYARI_GUN = data.bakim_uyari_gun;
     $('stGarantiBaslik').textContent = 'Garantisi Yaklaşan (' + GARANTI_UYARI_GUN + ' gün)';

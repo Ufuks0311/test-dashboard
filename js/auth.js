@@ -36,8 +36,10 @@
   const etkinlikKaydet = () => { try { localStorage.setItem(ETKINLIK_ANAHTAR, String(Date.now())); } catch (e) {} };
   const domHazirsa = fn => (document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', fn) : setTimeout(fn, 0));
 
-  let hazir = false, cikiliyor = false, hazirCoz, uyari = null, sonYazim = 0;
+  let hazir = false, cikiliyor = false, hazirCoz, yetkiCoz, uyari = null, sonYazim = 0;
   window.oturumHazir = new Promise(r => { hazirCoz = r; });
+  window.kullaniciAdmin = false;
+  window.yetkiHazir = new Promise(r => { yetkiCoz = r; }); // window.kullaniciAdmin doğru değerle çözülür
 
   async function cikisYap(neden) {
     if (cikiliyor) return;
@@ -80,6 +82,10 @@
       sb.from('sistem_ayar').select('oturum_suresi_dk').eq('id', 1).maybeSingle()
         .then(({ data }) => { if (data) window.oturumSuresiAyarla(data.oturum_suresi_dk); });
     }, 0);
+    // Yetki (admin) bilgisini çek; yetkiHazir bu değerle çözülür
+    sb.from('kullanici').select('admin').eq('id', oturum.user.id).maybeSingle()
+      .then(({ data }) => { window.kullaniciAdmin = !!(data && data.admin); yetkiCoz(window.kullaniciAdmin); })
+      .catch(() => { window.kullaniciAdmin = false; yetkiCoz(false); });
   });
 
   function arayuzKur() {
