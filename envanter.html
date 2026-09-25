@@ -153,12 +153,12 @@
         <div><label for="c_hostname">Hostname</label><input id="c_hostname" maxlength="100"></div>
 
         <h3>Konum ve zimmet</h3>
-        <div><label for="c_bolum">Bölüm <span class="yildiz">*</span></label>
-          <div class="en-tur-satir"><select id="c_bolum" required></select><button type="button" class="en-btn ikincil kucuk" id="yeniBolumBtn" data-log="ozel" title="Listede olmayan bir bölüm ekle">+ Yeni bölüm</button></div></div>
+        <div><label for="c_bolum_id">Bölüm <span class="yildiz">*</span></label>
+          <div class="en-tur-satir"><select id="c_bolum_id" required></select><button type="button" class="en-btn ikincil kucuk" id="yeniBolumBtn" data-log="ozel" title="Listede olmayan bir bölüm ekle">+ Yeni bölüm</button></div></div>
         <div class="iki"><label for="c_konum">Konum</label><input id="c_konum" maxlength="150" placeholder="ör. Lobi, Oda 305, Sistem odası"></div>
         <div><label for="c_zimmetli_kisi">Zimmetli kişi</label><input id="c_zimmetli_kisi" maxlength="120"></div>
         <div><label for="c_sicil_no">Sicil no</label><input id="c_sicil_no" maxlength="40"></div>
-        <div><label for="c_zimmet_bolum">Kişinin bölümü</label><select id="c_zimmet_bolum"></select></div>
+        <div><label for="c_zimmet_bolum_id">Kişinin bölümü</label><select id="c_zimmet_bolum_id"></select></div>
         <div><label for="c_zimmet_gorev">Görevi</label><input id="c_zimmet_gorev" maxlength="100" placeholder="ör. Ön Büro Şefi"></div>
         <div><label for="c_zimmet_tarihi">Zimmet tarihi</label><input id="c_zimmet_tarihi" type="date"></div>
 
@@ -307,13 +307,13 @@
     const secTur = $('fTur').value, secBolum = $('fBolum').value;
     $('fTur').innerHTML = '<option value="">Tümü</option>' + turler.map(t => '<option value="' + t.id + '">' + kacis(t.ad) + '</option>').join('');
     if (turler.some(t => String(t.id) === secTur)) $('fTur').value = secTur;
-    const secZimmetBolum = $('c_zimmet_bolum').value;
+    const secZimmetBolum = $('c_zimmet_bolum_id').value;
     const bolumSecenekleri = bolumler.map(b => '<option value="' + b.id + '">' + kacis(b.ad) + '</option>').join('');
     $('fBolum').innerHTML = '<option value="">Tümü</option>' + bolumSecenekleri;
     if (bolumler.some(b => String(b.id) === secBolum)) $('fBolum').value = secBolum;
-    $('c_bolum').innerHTML = '<option value="">Seçin…</option>' + bolumSecenekleri;
-    $('c_zimmet_bolum').innerHTML = '<option value="">— Seçilmedi —</option>' + bolumSecenekleri;
-    if (secZimmetBolum) $('c_zimmet_bolum').value = secZimmetBolum;
+    $('c_bolum_id').innerHTML = '<option value="">Seçin…</option>' + bolumSecenekleri;
+    $('c_zimmet_bolum_id').innerHTML = '<option value="">— Seçilmedi —</option>' + bolumSecenekleri;
+    if (secZimmetBolum) $('c_zimmet_bolum_id').value = secZimmetBolum;
     $('c_tur_id').innerHTML = '<option value="">Seçin…</option>' + turler.map(t => '<option value="' + t.id + '">' + kacis(t.ad) + '</option>').join('');
     $('c_bakim_anlasma_id').innerHTML = '<option value="">— Yok —</option>' + anlasmalar.map(a => '<option value="' + a.id + '">' + kacis(a.sistem + ' — ' + bolumAdi(a.bolum_id)) + '</option>').join('');
   }
@@ -433,7 +433,7 @@
       const secili = { ...formOku(), bolum_id: b.id };
       listeleriDoldur();
       FORM_ALANLARI.forEach(a => { if ($('c_' + a)) $('c_' + a).value = secili[a] == null ? '' : secili[a]; });
-      $('c_bolum').value = b.id;
+      $('c_bolum_id').value = b.id;
     } catch (err) { $('formHata').textContent = err.message; }
   });
 
