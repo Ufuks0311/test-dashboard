@@ -56,7 +56,7 @@
     <h1>Ayarlar</h1>
     <nav>
       <a href="index.html">Genel Bakış</a>
-      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="ayarlar.html" class="active">Ayarlar</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="envanter.html">Envanter</a> <a href="ayarlar.html" class="active">Ayarlar</a>
     </nav>
     <span id="saat" class="saat"></span>
   </header>
@@ -107,6 +107,18 @@
             <input id="uyariGun" type="number" min="1" max="365" step="1">
             <span class="ipucu">Bakım Anlaşmaları'nda bitişe bu kadar gün kala sarı uyarı gösterilir.</span>
           </div>
+        </section>
+
+        <!-- Cihaz türleri -->
+        <section class="ay-kart">
+          <h2>Cihaz Türleri</h2>
+          <p class="aciklama">Envanterde kullanılan cihaz türleri. Buradaki değişiklikler anında kaydedilir. Kullanımdaki bir tür silinemez, sadece yeniden adlandırılabilir.</p>
+          <ul class="ay-liste" id="turListe"><li style="color:#8b949e">Yükleniyor…</li></ul>
+          <div class="ay-satir">
+            <input id="yeniTur" type="text" maxlength="60" placeholder="ör. Kart kodlama cihazı" aria-label="Yeni cihaz türü">
+            <button class="ay-btn ikincil" id="turEkle" data-log="ozel">Ekle</button>
+          </div>
+          <p class="ay-sonuc" id="turSonuc"></p>
         </section>
 
         <!-- Test ve durum -->
@@ -390,7 +402,51 @@
       + '<td>' + (x.esik === 0 ? 'bitiş günü' : x.esik + ' gün') + '</td><td>' + tarih(x.bitis) + '</td></tr>').join('');
   }
 
-  window.oturumHazir.then(yukle);
+  // ---- Cihaz türleri (Kaydet çubuğundan bağımsız, anında kaydedilir) ----
+  function turMesaj(m, tur) { $('turSonuc').className = 'ay-sonuc ' + (tur || ''); $('turSonuc').textContent = m; }
+  function turHatasi(err) { return /duplicate|unique/i.test(err.message) ? 'Bu isimde bir tür zaten var.' : err.message; }
+  async function turlarYukle() {
+    const { data, error } = await sb.from('cihaz_turu').select('id,ad,cihaz(count)');
+    if (error) { turMesaj('Türler yüklenemedi: ' + error.message, 'hata'); return; }
+    const liste = (data || []).sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
+    $('turListe').innerHTML = liste.map(t => {
+      const n = (t.cihaz && t.cihaz[0] && t.cihaz[0].count) || 0;
+      return '<li><span>' + kacis(t.ad) + ' <span style="color:#8b949e;font-size:.8rem">(' + n + ' cihaz)</span></span>'
+        + '<span style="display:flex;gap:.2rem">'
+        + '<button type="button" data-log="ozel" data-tur-duzenle="' + t.id + '" data-ad="' + kacis(t.ad) + '" aria-label="Yeniden adlandır: ' + kacis(t.ad) + '" title="Yeniden adlandır">✎</button>'
+        + (n ? '' : '<button type="button" data-log="ozel" data-tur-sil="' + t.id + '" data-ad="' + kacis(t.ad) + '" aria-label="Sil: ' + kacis(t.ad) + '" title="Sil">×</button>')
+        + '</span></li>';
+    }).join('') || '<li style="color:#8b949e">Henüz tür yok.</li>';
+  }
+  async function turEkleAyar() {
+    const ad = $('yeniTur').value.trim();
+    if (!ad) return;
+    const { error } = await sb.from('cihaz_turu').insert({ ad: ad.slice(0, 60) });
+    if (error) { turMesaj(turHatasi(error), 'hata'); return; }
+    $('yeniTur').value = ''; turMesaj('"' + ad + '" eklendi.', 'ok');
+    log('Cihaz türü eklendi', ad); turlarYukle();
+  }
+  $('turEkle').addEventListener('click', turEkleAyar);
+  $('yeniTur').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); turEkleAyar(); } });
+  $('turListe').addEventListener('click', async e => {
+    const duz = e.target.closest('button[data-tur-duzenle]'), sil = e.target.closest('button[data-tur-sil]');
+    if (duz) {
+      const eski = duz.dataset.ad, yeni = (prompt('Yeni ad:', eski) || '').trim().slice(0, 60);
+      if (!yeni || yeni === eski) return;
+      const { error } = await sb.from('cihaz_turu').update({ ad: yeni }).eq('id', Number(duz.dataset.turDuzenle));
+      if (error) { turMesaj(turHatasi(error), 'hata'); return; }
+      turMesaj('"' + eski + '" → "' + yeni + '" olarak değiştirildi.', 'ok');
+      log('Cihaz türü güncellendi', eski + ' → ' + yeni); turlarYukle();
+    } else if (sil) {
+      if (!confirm('"' + sil.dataset.ad + '" türü silinsin mi?')) return;
+      const { error } = await sb.from('cihaz_turu').delete().eq('id', Number(sil.dataset.turSil));
+      if (error) { turMesaj(/foreign key/i.test(error.message) ? 'Bu tür kullanımda olduğu için silinemez.' : error.message, 'hata'); return; }
+      turMesaj('"' + sil.dataset.ad + '" silindi.', 'ok');
+      log('Cihaz türü silindi', sil.dataset.ad); turlarYukle();
+    }
+  });
+
+  window.oturumHazir.then(() => { yukle(); turlarYukle(); });
   </script>
 </body>
 </html>

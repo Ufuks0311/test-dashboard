@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Envanter — IT Panosu</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth.js"></script>
+  <style>
+    .en-kartlar { display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:1rem; margin-bottom:1.25rem; }
+    .en-filtre { display:flex; flex-wrap:wrap; gap:.75rem; align-items:flex-end; background:var(--kart); padding:1rem; border-radius:12px; margin-bottom:.75rem; }
+    .en-alan { display:flex; flex-direction:column; gap:.3rem; }
+    .en-alan.genis { flex:1; min-width:220px; }
+    .en-alan label, .en-form label { font-size:.75rem; color:#8b949e; }
+    .en-filtre input, .en-filtre select, .en-form input, .en-form select, .en-form textarea, .ice-kutu select {
+      background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:8px;
+      padding:.55rem .7rem; font-size:.9rem; font-family:inherit; width:100%; }
+    .en-filtre input:focus, .en-filtre select:focus, .en-form input:focus, .en-form select:focus, .en-form textarea:focus { outline:none; border-color:var(--vurgu); }
+    .en-form input.hatali { border-color:#f85149; }
+    input[type=date] { color-scheme:dark; }
+    .en-btn { background:var(--vurgu); color:#04121f; border:none; border-radius:8px; padding:.6rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .en-btn.ikincil { background:transparent; color:var(--metin); border:1px solid rgba(255,255,255,.2); font-weight:500; }
+    .en-btn.tehlike { background:transparent; color:#f85149; border:1px solid rgba(248,81,73,.4); font-weight:500; }
+    .en-btn.kucuk { padding:.3rem .6rem; font-size:.78rem; }
+    .en-btn:hover { opacity:.88; }
+    .en-btn:disabled { opacity:.4; cursor:default; }
+    .en-arac { display:flex; justify-content:space-between; align-items:center; gap:.6rem; flex-wrap:wrap; margin:.25rem 0 .75rem; }
+    .en-arac .sag { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .en-bilgi { color:#8b949e; font-size:.85rem; }
+    .en-tablo-kap { overflow-x:auto; background:var(--kart); border-radius:12px; }
+    .en-tablo { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .en-tablo th, .en-tablo td { padding:.65rem .8rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); vertical-align:top; }
+    .en-tablo th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; white-space:nowrap; }
+    .en-tablo tbody tr:hover { background:rgba(255,255,255,.03); }
+    .en-tablo .alt { color:#8b949e; font-size:.8rem; }
+    .en-tablo .mono { font-family:ui-monospace,Menlo,monospace; font-size:.84rem; }
+    .en-islem { display:flex; gap:.35rem; white-space:nowrap; }
+    .cip { display:inline-block; font-size:.74rem; font-weight:600; padding:.2rem .6rem; border-radius:999px; white-space:nowrap; }
+    .cip.yesil { color:#3ecf7a; background:rgba(62,207,122,.12); }
+    .cip.sari { color:#e3b341; background:rgba(227,179,65,.14); }
+    .cip.kirmizi { color:#f85149; background:rgba(248,81,73,.12); }
+    .cip.gri { color:#8b949e; background:rgba(139,148,158,.14); }
+    .cip.mavi { color:#4aa8ff; background:rgba(74,168,255,.12); }
+    .en-bos { padding:2rem; text-align:center; color:#8b949e; }
+    dialog { background:var(--kart); color:var(--metin); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:0; width:95%; max-width:900px; }
+    dialog::backdrop { background:rgba(0,0,0,.6); }
+    .dlg-ic { padding:1.5rem; max-height:88vh; overflow-y:auto; }
+    .dlg-ic h2 { font-size:1.15rem; margin-bottom:1rem; }
+    .en-form h3 { grid-column:1 / -1; font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; color:var(--vurgu); margin-top:.6rem; padding-top:.8rem; border-top:1px solid rgba(255,255,255,.06); }
+    .en-form h3:first-child { margin-top:0; padding-top:0; border-top:none; }
+    .en-form { display:grid; grid-template-columns:repeat(3, 1fr); gap:.8rem 1rem; }
+    .en-form > div { display:flex; flex-direction:column; gap:.3rem; }
+    .en-form .iki { grid-column:span 2; }
+    .en-form .tam { grid-column:1 / -1; }
+    .en-form textarea { min-height:80px; resize:vertical; }
+    .en-form .yildiz { color:#f85149; }
+    .en-tur-satir { display:flex; gap:.4rem; }
+    .en-tur-satir select { flex:1; }
+    .en-mevcut-dosya { font-size:.85rem; color:#c9d1d9; display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+    .en-mevcut-dosya label { display:flex; gap:.35rem; align-items:center; }
+    .en-mevcut-dosya input { width:auto; }
+    .dlg-alt { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.25rem; align-items:center; }
+    .dlg-alt .en-hata { margin-right:auto; }
+    .en-hata { color:#f85149; font-size:.85rem; }
+    .en-detay { display:grid; grid-template-columns:repeat(2, 1fr); gap:1rem 2rem; }
+    .en-detay dl { display:grid; grid-template-columns:150px 1fr; gap:.45rem .8rem; font-size:.88rem; align-content:start; }
+    .en-detay dt { color:#8b949e; }
+    .en-detay dd { word-break:break-word; }
+    .en-detay h3 { grid-column:1 / -1; font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; color:var(--vurgu); margin-bottom:.2rem; }
+    .en-detay .bolum { display:flex; flex-direction:column; gap:.4rem; }
+    .en-gecmis { margin-top:1.5rem; border-top:1px solid rgba(255,255,255,.08); padding-top:1rem; }
+    .en-gecmis h3 { font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; color:var(--vurgu); margin-bottom:.6rem; }
+    .en-gecmis li { list-style:none; font-size:.85rem; padding:.55rem 0; border-bottom:1px solid rgba(255,255,255,.05); }
+    .en-gecmis .ust { color:#8b949e; font-size:.78rem; margin-bottom:.2rem; }
+    .en-gecmis .fark { color:#c9d1d9; }
+    .en-gecmis .fark b { color:var(--metin); font-weight:600; }
+    .ice-ozet { font-size:.9rem; line-height:1.6; }
+    .ice-hatalar { max-height:220px; overflow-y:auto; font-size:.82rem; color:#f85149; margin-top:.5rem; background:var(--bg); border-radius:8px; padding:.6rem .8rem; }
+    .ice-not { font-size:.8rem; color:#8b949e; margin-top:.6rem; line-height:1.5; }
+    @media (max-width:760px) { .en-form { grid-template-columns:1fr; } .en-form .iki { grid-column:auto; } .en-detay { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo" title="DaVinci Teknoloji"></span>
+    <h1>Envanter</h1>
+    <nav>
+      <a href="index.html">Genel Bakış</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="envanter.html" class="active">Envanter</a> <a href="ayarlar.html">Ayarlar</a>
+    </nav>
+    <span id="saat" class="saat"></span>
+  </header>
+  <main>
+    <section id="uygulama" hidden>
+      <section class="en-kartlar">
+        <div class="kart"><h2>Toplam Cihaz</h2><p class="deger" id="stToplam">–</p></div>
+        <div class="kart"><h2>Kullanımda</h2><p class="deger" id="stKullanim" style="color:#3ecf7a">–</p></div>
+        <div class="kart"><h2>Arızalı / Serviste</h2><p class="deger" id="stAriza" style="color:#f85149">–</p></div>
+        <div class="kart"><h2 id="stGarantiBaslik">Garantisi Yaklaşan</h2><p class="deger" id="stGaranti" style="color:#e3b341">–</p></div>
+        <div class="kart"><h2>Toplam Alım Değeri</h2><p class="deger" id="stDeger" style="font-size:1.05rem">–</p></div>
+      </section>
+
+      <div class="en-filtre">
+        <div class="en-alan genis"><label for="ara">Ara</label><input id="ara" type="search" placeholder="Demirbaş, seri no, marka, model, IP, MAC, kişi, sicil, konum…"></div>
+        <div class="en-alan"><label for="fTur">Tür</label><select id="fTur"><option value="">Tümü</option></select></div>
+        <div class="en-alan"><label for="fBolum">Bölüm</label><select id="fBolum"><option value="">Tümü</option></select></div>
+        <div class="en-alan"><label for="fDurum">Durum</label><select id="fDurum"><option value="">Tümü</option></select></div>
+        <div class="en-alan"><label for="fGaranti">Garanti</label>
+          <select id="fGaranti">
+            <option value="">Tümü</option>
+            <option value="aktif">Devam ediyor</option>
+            <option value="yakin" id="optGarantiYakin">Yaklaşan</option>
+            <option value="dolmus">Dolmuş</option>
+            <option value="yok">Bilgi yok</option>
+          </select></div>
+      </div>
+      <div class="en-arac">
+        <span class="en-bilgi" id="bilgi"></span>
+        <div class="sag">
+          <button class="en-btn ikincil" id="sablonBtn" data-log="ozel">CSV şablonu</button>
+          <button class="en-btn ikincil" id="iceBtn" data-log="ozel">CSV içe aktar</button>
+          <button class="en-btn ikincil" id="csvBtn">CSV indir</button>
+          <button class="en-btn" id="yeniBtn" data-log="ozel">+ Yeni Cihaz</button>
+        </div>
+        <input type="file" id="iceDosya" accept=".csv,text/csv" hidden>
+      </div>
+
+      <div class="en-tablo-kap">
+        <table class="en-tablo">
+          <thead><tr>
+            <th>Demirbaş No</th><th>Tür</th><th>Marka / Model</th><th>Bölüm / Konum</th><th>Zimmet</th><th>IP / Hostname</th><th>Durum</th><th>Garanti</th><th></th>
+          </tr></thead>
+          <tbody id="govde"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Ekle / Düzenle -->
+  <dialog id="formDlg">
+    <form class="dlg-ic" id="cihazForm" novalidate>
+      <h2 id="formBaslik">Yeni Cihaz</h2>
+      <div class="en-form">
+        <h3>Kimlik</h3>
+        <div><label for="c_demirbas_no">Demirbaş no <span class="yildiz">*</span></label><input id="c_demirbas_no" required maxlength="50"></div>
+        <div><label for="c_tur_id">Cihaz türü <span class="yildiz">*</span></label>
+          <div class="en-tur-satir"><select id="c_tur_id" required></select><button type="button" class="en-btn ikincil kucuk" id="yeniTurBtn" data-log="ozel" title="Listede olmayan bir tür ekle">+ Yeni tür</button></div></div>
+        <div><label for="c_durum">Durum <span class="yildiz">*</span></label><select id="c_durum" required></select></div>
+        <div><label for="c_marka">Marka <span class="yildiz">*</span></label><input id="c_marka" required maxlength="80"></div>
+        <div><label for="c_model">Model <span class="yildiz">*</span></label><input id="c_model" required maxlength="120"></div>
+        <div><label for="c_seri_no">Seri no</label><input id="c_seri_no" maxlength="100"></div>
+        <div><label for="c_hostname">Hostname</label><input id="c_hostname" maxlength="100"></div>
+
+        <h3>Konum ve zimmet</h3>
+        <div><label for="c_bolum">Bölüm <span class="yildiz">*</span></label><input id="c_bolum" required maxlength="120" list="bolumListe"><datalist id="bolumListe"></datalist></div>
+        <div class="iki"><label for="c_konum">Konum</label><input id="c_konum" maxlength="150" placeholder="ör. Lobi, Oda 305, Sistem odası"></div>
+        <div><label for="c_zimmetli_kisi">Zimmetli kişi</label><input id="c_zimmetli_kisi" maxlength="120"></div>
+        <div><label for="c_sicil_no">Sicil no</label><input id="c_sicil_no" maxlength="40"></div>
+        <div><label for="c_zimmet_bolum">Kişinin bölümü</label><input id="c_zimmet_bolum" maxlength="120" list="bolumListe"></div>
+        <div><label for="c_zimmet_gorev">Görevi</label><input id="c_zimmet_gorev" maxlength="100" placeholder="ör. Ön Büro Şefi"></div>
+        <div><label for="c_zimmet_tarihi">Zimmet tarihi</label><input id="c_zimmet_tarihi" type="date"></div>
+
+        <h3>Ağ bilgileri</h3>
+        <div><label for="c_ip_adresi">IP adresi</label><input id="c_ip_adresi" maxlength="15" placeholder="192.168.1.50"></div>
+        <div><label for="c_mac_adresi">MAC adresi</label><input id="c_mac_adresi" maxlength="17" placeholder="aa:bb:cc:dd:ee:ff"></div>
+        <div><label for="c_vlan">VLAN</label><input id="c_vlan" type="number" min="1" max="4094" step="1"></div>
+        <div class="tam"><label for="c_switch_port">Bağlı olduğu switch / port</label><input id="c_switch_port" maxlength="100" placeholder="ör. SW-KAT3 / Gi1/0/12"></div>
+
+        <h3>Teknik</h3>
+        <div><label for="c_isletim_sistemi">İşletim sistemi / firmware</label><input id="c_isletim_sistemi" maxlength="120"></div>
+        <div class="iki"><label for="c_ozellikler">Özellikler</label><input id="c_ozellikler" maxlength="2000" placeholder="ör. i5-1245U, 16 GB RAM, 512 GB SSD"></div>
+
+        <h3>Satın alma ve garanti</h3>
+        <div><label for="c_tedarikci">Tedarikçi</label><input id="c_tedarikci" maxlength="150"></div>
+        <div><label for="c_fatura_no">Fatura no</label><input id="c_fatura_no" maxlength="60"></div>
+        <div><label for="c_satin_alma_tarihi">Satın alma tarihi</label><input id="c_satin_alma_tarihi" type="date"></div>
+        <div><label for="c_bedel">Satın alma bedeli</label><input id="c_bedel" type="number" min="0" step="0.01" placeholder="0,00"></div>
+        <div><label for="c_para_birimi">Para birimi</label><select id="c_para_birimi"><option>TRY</option><option>USD</option><option>EUR</option></select></div>
+        <div><label for="c_garanti_bitis">Garanti bitiş tarihi</label><input id="c_garanti_bitis" type="date"></div>
+        <div class="tam"><label for="c_bakim_anlasma_id">İlgili bakım anlaşması</label><select id="c_bakim_anlasma_id"></select></div>
+        <div class="tam"><label for="c_dosya">Belge (fatura, garanti belgesi, fotoğraf — PDF, Word, JPG/PNG, en fazla 10 MB)</label>
+          <input id="c_dosya" type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+          <div class="en-mevcut-dosya" id="mevcutDosya" hidden></div></div>
+
+        <h3>Notlar</h3>
+        <div class="tam"><textarea id="c_notlar" maxlength="4000" aria-label="Notlar"></textarea></div>
+      </div>
+      <div class="dlg-alt">
+        <span class="en-hata" id="formHata"></span>
+        <button type="button" class="en-btn ikincil" id="vazgecBtn" data-log="ozel">Vazgeç</button>
+        <button type="submit" class="en-btn" id="kaydetBtn" data-log="ozel">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Detay -->
+  <dialog id="detayDlg">
+    <div class="dlg-ic">
+      <h2 id="detayBaslik"></h2>
+      <div class="en-detay" id="detayIcerik"></div>
+      <div class="en-gecmis"><h3>Değişiklik geçmişi</h3><ul id="gecmisListe"></ul></div>
+      <div class="dlg-alt">
+        <button type="button" class="en-btn ikincil" id="detayKapat" data-log="ozel">Kapat</button>
+        <button type="button" class="en-btn" id="detayDuzenle" data-log="ozel">Düzenle</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- CSV içe aktarma önizleme -->
+  <dialog id="iceDlg">
+    <div class="dlg-ic ice-kutu">
+      <h2>CSV İçe Aktarma</h2>
+      <div class="ice-ozet" id="iceOzet"></div>
+      <div class="ice-hatalar" id="iceHatalar" hidden></div>
+      <p class="ice-not">Sütun başlıkları "CSV şablonu" ile indirilen dosyadakilerle aynı olmalı. Tarihler GG.AA.YYYY ya da YYYY-AA-GG, tutarlar 1.250,50 biçiminde olabilir. Hatalı satırlar atlanır, diğerleri eklenir. Aynı demirbaş numarası zaten varsa o satır eklenmez.</p>
+      <div class="dlg-alt">
+        <span class="en-hata" id="iceSonuc"></span>
+        <button type="button" class="en-btn ikincil" id="iceKapat" data-log="ozel">Kapat</button>
+        <button type="button" class="en-btn" id="iceOnay" data-log="ozel">İçe aktar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/log.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+  const sb = window.sb; // ortak oturum istemcisi (js/auth.js)
+  const TABLO = 'cihaz', DEPO = 'envanter-belgeler', MAKS_DOSYA = 10 * 1024 * 1024;
+  let GARANTI_UYARI_GUN = 30; // Ayarlar'daki "yaklaşıyor" uyarı günüyle aynı
+  const DURUMLAR = ['Kullanımda', 'Depoda', 'Arızalı', 'Serviste', 'Hurdaya ayrıldı', 'Kayıp'];
+  const DURUM_RENK = { 'Kullanımda': 'yesil', 'Depoda': 'mavi', 'Arızalı': 'kirmizi', 'Serviste': 'sari', 'Hurdaya ayrıldı': 'gri', 'Kayıp': 'kirmizi' };
+  // Alan adı → Türkçe etiket (form, detay, geçmiş ve CSV için ortak)
+  const ALANLAR = [
+    ['demirbas_no', 'Demirbaş no'], ['tur_id', 'Cihaz türü'], ['marka', 'Marka'], ['model', 'Model'],
+    ['seri_no', 'Seri no'], ['hostname', 'Hostname'], ['durum', 'Durum'], ['bolum', 'Bölüm'], ['konum', 'Konum'],
+    ['zimmetli_kisi', 'Zimmetli kişi'], ['sicil_no', 'Sicil no'], ['zimmet_bolum', 'Kişinin bölümü'], ['zimmet_gorev', 'Görevi'], ['zimmet_tarihi', 'Zimmet tarihi'],
+    ['ip_adresi', 'IP adresi'], ['mac_adresi', 'MAC adresi'], ['vlan', 'VLAN'], ['switch_port', 'Switch / port'],
+    ['isletim_sistemi', 'İşletim sistemi / firmware'], ['ozellikler', 'Özellikler'], ['tedarikci', 'Tedarikçi'],
+    ['fatura_no', 'Fatura no'], ['satin_alma_tarihi', 'Satın alma tarihi'], ['bedel', 'Satın alma bedeli'],
+    ['para_birimi', 'Para birimi'], ['garanti_bitis', 'Garanti bitiş'], ['bakim_anlasma_id', 'İlgili bakım anlaşması'],
+    ['notlar', 'Notlar'], ['dosya_adi', 'Belge']
+  ];
+  const ETIKET = Object.fromEntries(ALANLAR);
+  const FORM_ALANLARI = ALANLAR.map(a => a[0]).filter(a => a !== 'dosya_adi');
+  const TARIH_ALANLARI = ['zimmet_tarihi', 'satin_alma_tarihi', 'garanti_bitis'];
+
+  let cihazlar = [], turler = [], anlasmalar = [], duzenlenen = null, detaydaki = null, iceSatirlar = [];
+
+  const $ = id => document.getElementById(id);
+  const log = (o, d) => { if (window.logYaz) logYaz(o, d); };
+  function kacis(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  const kucult = s => String(s || '').toLocaleLowerCase('tr');
+  const tarih = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('tr-TR') : '–';
+  const zamanDamgasi = t => t ? new Date(t).toLocaleString('tr-TR') : '–';
+  const para = (tutar, pb) => tutar == null ? '–' : new Intl.NumberFormat('tr-TR', { style: 'currency', currency: pb || 'TRY' }).format(tutar);
+  const turAdi = id => (turler.find(t => t.id === id) || {}).ad || '–';
+  const anlasmaAdi = id => { const a = anlasmalar.find(x => x.id === id); return a ? a.sistem + ' — ' + a.bolum : '–'; };
+  const IP_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+
+  function macNormalize(m) {
+    const h = String(m || '').toLowerCase().replace(/[^0-9a-f]/g, '');
+    return h.length === 12 ? h.match(/.{2}/g).join(':') : null;
+  }
+  function garantiDurumu(c) {
+    if (!c.garanti_bitis) return { kod: 'yok', ad: 'Bilgi yok', renk: 'gri' };
+    const b = new Date(c.garanti_bitis + 'T00:00:00'), bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    const g = Math.round((b - bugun) / 86400000);
+    if (g < 0) return { kod: 'dolmus', ad: 'Doldu', renk: 'kirmizi' };
+    if (g <= GARANTI_UYARI_GUN) return { kod: 'yakin', ad: g === 0 ? 'Bugün bitiyor' : g + ' gün kaldı', renk: 'sari' };
+    return { kod: 'aktif', ad: 'Devam ediyor', renk: 'yesil' };
+  }
+  // Tabloda ve geçmişte bir alanın okunur hali
+  function gosterim(alan, deger) {
+    if (deger == null || deger === '') return '–';
+    if (alan === 'tur_id') return turAdi(Number(deger));
+    if (alan === 'bakim_anlasma_id') return anlasmaAdi(Number(deger));
+    if (TARIH_ALANLARI.includes(alan)) return tarih(String(deger).slice(0, 10));
+    if (alan === 'bedel') return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(deger);
+    return String(deger);
+  }
+
+  // ---- Yükleme ----
+  async function yukle() {
+    $('govde').innerHTML = '<tr><td colspan="9" class="en-bos">Yükleniyor…</td></tr>';
+    const [c, t, a] = await Promise.all([
+      sb.from(TABLO).select('*').limit(5000),
+      sb.from('cihaz_turu').select('id,ad').order('ad'),
+      sb.from('bakim_anlasma').select('id,sistem,bolum').order('sistem')
+    ]);
+    const hata = c.error || t.error || a.error;
+    if (hata) { $('govde').innerHTML = '<tr><td colspan="9" class="en-bos" style="color:#f85149">Envanter yüklenemedi: ' + kacis(hata.message) + '</td></tr>'; return; }
+    cihazlar = (c.data || []).sort((x, y) => x.demirbas_no.localeCompare(y.demirbas_no, 'tr', { numeric: true }));
+    turler = (t.data || []).sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
+    anlasmalar = a.data || [];
+    listeleriDoldur(); ozet(); ciz();
+  }
+
+  function listeleriDoldur() {
+    const secTur = $('fTur').value, secBolum = $('fBolum').value;
+    $('fTur').innerHTML = '<option value="">Tümü</option>' + turler.map(t => '<option value="' + t.id + '">' + kacis(t.ad) + '</option>').join('');
+    if (turler.some(t => String(t.id) === secTur)) $('fTur').value = secTur;
+    const bolumler = [...new Set(cihazlar.map(c => c.bolum).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
+    $('fBolum').innerHTML = '<option value="">Tümü</option>' + bolumler.map(b => '<option>' + kacis(b) + '</option>').join('');
+    if (bolumler.includes(secBolum)) $('fBolum').value = secBolum;
+    // Bölüm önerileri: envanter + bakım anlaşmalarındaki bölümler
+    const tumBolumler = [...new Set(bolumler.concat(anlasmalar.map(a => a.bolum)))].sort((a, b) => a.localeCompare(b, 'tr'));
+    $('bolumListe').innerHTML = tumBolumler.map(b => '<option value="' + kacis(b) + '">').join('');
+    $('c_tur_id').innerHTML = '<option value="">Seçin…</option>' + turler.map(t => '<option value="' + t.id + '">' + kacis(t.ad) + '</option>').join('');
+    $('c_bakim_anlasma_id').innerHTML = '<option value="">— Yok —</option>' + anlasmalar.map(a => '<option value="' + a.id + '">' + kacis(a.sistem + ' — ' + a.bolum) + '</option>').join('');
+  }
+  $('fDurum').innerHTML += DURUMLAR.map(d => '<option>' + d + '</option>').join('');
+  $('c_durum').innerHTML = DURUMLAR.map(d => '<option>' + d + '</option>').join('');
+
+  function ozet() {
+    $('stToplam').textContent = cihazlar.length;
+    $('stKullanim').textContent = cihazlar.filter(c => c.durum === 'Kullanımda').length;
+    $('stAriza').textContent = cihazlar.filter(c => c.durum === 'Arızalı' || c.durum === 'Serviste').length;
+    $('stGaranti').textContent = cihazlar.filter(c => garantiDurumu(c).kod === 'yakin').length;
+    const toplamlar = {};
+    cihazlar.forEach(c => { if (c.bedel != null) toplamlar[c.para_birimi] = (toplamlar[c.para_birimi] || 0) + Number(c.bedel); });
+    const pb = Object.keys(toplamlar);
+    $('stDeger').textContent = pb.length ? pb.map(k => para(toplamlar[k], k)).join(' · ') : '–';
+  }
+
+  function filtrelenmis() {
+    const kelimeler = kucult($('ara').value).split(/\s+/).filter(Boolean);
+    const tur = $('fTur').value, bolum = $('fBolum').value, durum = $('fDurum').value, garanti = $('fGaranti').value;
+    return cihazlar.filter(c => {
+      if (tur && String(c.tur_id) !== tur) return false;
+      if (bolum && c.bolum !== bolum) return false;
+      if (durum && c.durum !== durum) return false;
+      if (garanti && garantiDurumu(c).kod !== garanti) return false;
+      if (!kelimeler.length) return true;
+      const metin = kucult([c.demirbas_no, turAdi(c.tur_id), c.marka, c.model, c.seri_no, c.hostname, c.bolum, c.konum,
+        c.zimmetli_kisi, c.sicil_no, c.zimmet_bolum, c.zimmet_gorev, c.ip_adresi, c.mac_adresi, c.switch_port, c.isletim_sistemi, c.ozellikler,
+        c.tedarikci, c.fatura_no, c.notlar].join(' '));
+      return kelimeler.every(w => metin.includes(w));
+    });
+  }
+
+  function zimmetAlt(c) {
+    const p = [c.zimmet_gorev, c.zimmet_bolum, c.sicil_no ? 'Sicil: ' + c.sicil_no : null].filter(Boolean);
+    return p.length ? '<br><span class="alt">' + kacis(p.join(' · ')) + '</span>' : '';
+  }
+
+  function ciz() {
+    const liste = filtrelenmis();
+    $('bilgi').textContent = liste.length + ' / ' + cihazlar.length + ' cihaz gösteriliyor';
+    if (!liste.length) {
+      $('govde').innerHTML = '<tr><td colspan="9" class="en-bos">' + (cihazlar.length ? 'Aramaya uyan cihaz bulunamadı.' : 'Henüz cihaz eklenmemiş. "+ Yeni Cihaz" ile başlayın ya da mevcut listenizi CSV ile içe aktarın.') + '</td></tr>';
+      return;
+    }
+    $('govde').innerHTML = liste.map(c => {
+      const g = garantiDurumu(c);
+      return '<tr>'
+        + '<td class="mono"><strong>' + kacis(c.demirbas_no) + '</strong>' + (c.seri_no ? '<br><span class="alt">SN: ' + kacis(c.seri_no) + '</span>' : '') + '</td>'
+        + '<td>' + kacis(turAdi(c.tur_id)) + '</td>'
+        + '<td>' + kacis(c.marka) + '<br><span class="alt">' + kacis(c.model) + '</span></td>'
+        + '<td>' + kacis(c.bolum) + (c.konum ? '<br><span class="alt">' + kacis(c.konum) + '</span>' : '') + '</td>'
+        + '<td>' + (c.zimmetli_kisi ? kacis(c.zimmetli_kisi) + zimmetAlt(c) : '<span class="alt">–</span>') + '</td>'
+        + '<td class="mono">' + (c.ip_adresi ? kacis(c.ip_adresi) : '<span class="alt">–</span>') + (c.hostname ? '<br><span class="alt">' + kacis(c.hostname) + '</span>' : '') + '</td>'
+        + '<td><span class="cip ' + (DURUM_RENK[c.durum] || 'gri') + '">' + kacis(c.durum) + '</span></td>'
+        + '<td><span class="cip ' + g.renk + '">' + kacis(g.ad) + '</span></td>'
+        + '<td><div class="en-islem">'
+        + '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="detay" data-id="' + c.id + '">Detay</button>'
+        + '<button class="en-btn ikincil kucuk" data-log="ozel" data-islem="duzenle" data-id="' + c.id + '">Düzenle</button>'
+        + '<button class="en-btn tehlike kucuk" data-log="ozel" data-islem="sil" data-id="' + c.id + '">Sil</button>'
+        + '</div></td></tr>';
+    }).join('');
+  }
+  ['ara', 'fTur', 'fBolum', 'fDurum', 'fGaranti'].forEach(id => { $(id).addEventListener('input', ciz); $(id).addEventListener('change', ciz); });
+
+  $('govde').addEventListener('click', e => {
+    const b = e.target.closest('button[data-islem]');
+    if (!b) return;
+    const c = cihazlar.find(x => x.id === Number(b.dataset.id));
+    if (!c) return;
+    if (b.dataset.islem === 'detay') detayAc(c);
+    else if (b.dataset.islem === 'duzenle') formAc(c);
+    else if (b.dataset.islem === 'sil') sil(c);
+  });
+
+  // ---- Cihaz türü ekleme (formdan) ----
+  async function turEkle(ad) {
+    ad = String(ad || '').trim().slice(0, 60);
+    if (!ad) return null;
+    const mevcut = turler.find(t => kucult(t.ad) === kucult(ad));
+    if (mevcut) return mevcut;
+    const { data, error } = await sb.from('cihaz_turu').insert({ ad }).select('id,ad').single();
+    if (error) throw new Error(/duplicate|unique/i.test(error.message) ? '"' + ad + '" türü zaten var.' : error.message);
+    turler.push(data); turler.sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
+    log('Cihaz türü eklendi', ad);
+    return data;
+  }
+  $('yeniTurBtn').addEventListener('click', async () => {
+    const ad = prompt('Yeni cihaz türünün adı (ör. Kart kodlama cihazı):');
+    if (!ad || !ad.trim()) return;
+    try {
+      const t = await turEkle(ad);
+      const secili = { ...formOku(), tur_id: t.id };
+      listeleriDoldur();
+      FORM_ALANLARI.forEach(a => { if ($('c_' + a)) $('c_' + a).value = secili[a] == null ? '' : secili[a]; });
+      $('c_tur_id').value = t.id;
+    } catch (err) { $('formHata').textContent = err.message; }
+  });
+
+  // ---- Ekle / Düzenle ----
+  function formOku() {
+    const v = {};
+    FORM_ALANLARI.forEach(a => { const el = $('c_' + a); const d = el ? el.value.trim() : ''; v[a] = d === '' ? null : d; });
+    return v;
+  }
+  function formAc(c) {
+    duzenlenen = c || null;
+    $('formBaslik').textContent = c ? 'Cihazı Düzenle — ' + c.demirbas_no : 'Yeni Cihaz';
+    $('formHata').textContent = '';
+    document.querySelectorAll('#cihazForm .hatali').forEach(el => el.classList.remove('hatali'));
+    FORM_ALANLARI.forEach(a => { const el = $('c_' + a); if (el) el.value = c && c[a] != null ? c[a] : ''; });
+    if (!c) { $('c_durum').value = 'Kullanımda'; $('c_para_birimi').value = 'TRY'; }
+    $('c_dosya').value = '';
+    if (c && c.dosya_yolu) {
+      $('mevcutDosya').hidden = false;
+      $('mevcutDosya').innerHTML = '<span>Mevcut belge: ' + kacis(c.dosya_adi || 'belge') + '</span>'
+        + '<label><input type="checkbox" id="dosyaKaldir" data-log="ozel"> Belgeyi kaldır</label>';
+    } else { $('mevcutDosya').hidden = true; $('mevcutDosya').innerHTML = ''; }
+    $('formDlg').showModal();
+    $('c_demirbas_no').focus();
+  }
+  $('yeniBtn').addEventListener('click', () => formAc(null));
+  $('vazgecBtn').addEventListener('click', () => $('formDlg').close());
+
+  // Form değerlerini doğrula ve veritabanı biçimine çevir
+  function formDogrula() {
+    const v = formOku(), hatalar = [];
+    const isaretle = (a, m) => { $('c_' + a).classList.add('hatali'); hatalar.push(m); };
+    document.querySelectorAll('#cihazForm .hatali').forEach(el => el.classList.remove('hatali'));
+    ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum', 'durum'].forEach(a => { if (!v[a]) isaretle(a, ETIKET[a] + ' zorunlu.'); });
+    if (v.ip_adresi && !IP_RE.test(v.ip_adresi)) isaretle('ip_adresi', 'IP adresi geçersiz (ör. 192.168.1.50).');
+    if (v.mac_adresi) { const m = macNormalize(v.mac_adresi); if (!m) isaretle('mac_adresi', 'MAC adresi geçersiz (ör. aa:bb:cc:dd:ee:ff ya da aabb.ccdd.eeff).'); else v.mac_adresi = m; }
+    if (v.vlan != null) { const n = Number(v.vlan); if (!Number.isInteger(n) || n < 1 || n > 4094) isaretle('vlan', 'VLAN 1–4094 arası olmalı.'); else v.vlan = n; }
+    if (v.bedel != null) { const n = Number(v.bedel); if (!(n >= 0)) isaretle('bedel', 'Bedel geçersiz.'); else v.bedel = n; }
+    v.tur_id = v.tur_id ? Number(v.tur_id) : null;
+    v.bakim_anlasma_id = v.bakim_anlasma_id ? Number(v.bakim_anlasma_id) : null;
+    v.para_birimi = v.para_birimi || 'TRY';
+    return { v, hatalar };
+  }
+
+  function veritabaniHatasi(err) {
+    const m = (err && err.message) || String(err);
+    if (/cihaz_demirbas_idx/.test(m)) return 'Bu demirbaş numarası başka bir cihazda kayıtlı.';
+    if (/cihaz_seri_idx/.test(m)) return 'Bu seri numarası başka bir cihazda kayıtlı.';
+    if (/cihaz_mac_idx/.test(m)) return 'Bu MAC adresi başka bir cihazda kayıtlı.';
+    if (/type inet/.test(m)) return 'IP adresi geçersiz.';
+    if (/type macaddr/.test(m)) return 'MAC adresi geçersiz.';
+    if (/check constraint/.test(m)) return 'Girilen değerlerden biri izin verilen sınırın dışında.';
+    return m;
+  }
+
+  function guvenliAd(ad) {
+    return ad.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]/g, '_').slice(-100) || 'belge';
+  }
+
+  $('cihazForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('formHata').textContent = '';
+    const { v, hatalar } = formDogrula();
+    if (hatalar.length) { $('formHata').textContent = hatalar[0]; return; }
+    // Aynı IP başka bir cihazda varsa uyar (DHCP rezervasyonu vb. durumlar için engellemiyoruz)
+    if (v.ip_adresi) {
+      const cakisan = cihazlar.filter(x => x.ip_adresi === v.ip_adresi && (!duzenlenen || x.id !== duzenlenen.id));
+      if (cakisan.length && !confirm(v.ip_adresi + ' adresi şu cihazda da kayıtlı: ' + cakisan.map(x => x.demirbas_no).join(', ') + '.\nYine de kaydedilsin mi?')) return;
+    }
+    const dosya = $('c_dosya').files[0];
+    if (dosya && dosya.size > MAKS_DOSYA) { $('formHata').textContent = 'Belge 10 MB sınırını aşıyor.'; return; }
+
+    $('kaydetBtn').disabled = true; $('kaydetBtn').textContent = 'Kaydediliyor…';
+    let yeniYol = null;
+    try {
+      if (dosya) {
+        yeniYol = crypto.randomUUID() + '/' + guvenliAd(dosya.name);
+        const { error: yErr } = await sb.storage.from(DEPO).upload(yeniYol, dosya);
+        if (yErr) throw new Error('Belge yüklenemedi: ' + yErr.message);
+        v.dosya_yolu = yeniYol; v.dosya_adi = dosya.name.slice(0, 200);
+      } else if (duzenlenen && $('dosyaKaldir') && $('dosyaKaldir').checked) {
+        v.dosya_yolu = null; v.dosya_adi = null;
+      }
+      let kayit;
+      if (duzenlenen) {
+        const { data, error } = await sb.from(TABLO).update(v).eq('id', duzenlenen.id).select('id,demirbas_no').single();
+        if (error) throw error; kayit = data;
+      } else {
+        const { data, error } = await sb.from(TABLO).insert(v).select('id,demirbas_no').single();
+        if (error) throw error; kayit = data;
+      }
+      if (duzenlenen && duzenlenen.dosya_yolu && 'dosya_yolu' in v && v.dosya_yolu !== duzenlenen.dosya_yolu) {
+        await sb.storage.from(DEPO).remove([duzenlenen.dosya_yolu]);
+      }
+      log(duzenlenen ? 'Cihaz güncellendi' : 'Cihaz eklendi', kayit.demirbas_no);
+      $('formDlg').close();
+      yukle();
+    } catch (err) {
+      if (yeniYol) await sb.storage.from(DEPO).remove([yeniYol]);
+      $('formHata').textContent = 'Kaydedilemedi: ' + veritabaniHatasi(err);
+    } finally {
+      $('kaydetBtn').disabled = false; $('kaydetBtn').textContent = 'Kaydet';
+    }
+  });
+
+  // ---- Detay ve değişiklik geçmişi ----
+  async function belgeAc(c) {
+    const pencere = window.open('', '_blank');
+    const { data, error } = await sb.storage.from(DEPO).createSignedUrl(c.dosya_yolu, 60);
+    if (error) { if (pencere) pencere.close(); alert('Belge açılamadı: ' + error.message); return; }
+    if (pencere) pencere.location = data.signedUrl; else window.location = data.signedUrl;
+    log('Dosya açıldı', 'Envanter: ' + c.demirbas_no);
+  }
+
+  function detayAc(c) {
+    detaydaki = c;
+    const g = garantiDurumu(c);
+    $('detayBaslik').textContent = c.demirbas_no + ' — ' + turAdi(c.tur_id) + ' · ' + c.marka + ' ' + c.model;
+    const blok = (baslik, satirlar) => '<div class="bolum"><h3>' + baslik + '</h3><dl>'
+      + satirlar.map(s => '<dt>' + s[0] + '</dt><dd>' + s[1] + '</dd>').join('') + '</dl></div>';
+    const d = a => kacis(gosterim(a, c[a]));
+    $('detayIcerik').innerHTML =
+      blok('Kimlik', [['Durum', '<span class="cip ' + (DURUM_RENK[c.durum] || 'gri') + '">' + kacis(c.durum) + '</span>'],
+        ['Tür', d('tur_id')], ['Marka / model', kacis(c.marka + ' ' + c.model)], ['Seri no', d('seri_no')], ['Hostname', d('hostname')]])
+      + blok('Konum ve zimmet', [['Bölüm', d('bolum')], ['Konum', d('konum')], ['Zimmetli kişi', d('zimmetli_kisi')],
+        ['Sicil no', d('sicil_no')], ['Kişinin bölümü', d('zimmet_bolum')], ['Görevi', d('zimmet_gorev')], ['Zimmet tarihi', d('zimmet_tarihi')]])
+      + blok('Ağ', [['IP adresi', d('ip_adresi')], ['MAC adresi', d('mac_adresi')], ['VLAN', d('vlan')], ['Switch / port', d('switch_port')]])
+      + blok('Teknik', [['İşletim sistemi', d('isletim_sistemi')], ['Özellikler', d('ozellikler')]])
+      + blok('Satın alma ve garanti', [['Tedarikçi', d('tedarikci')], ['Fatura no', d('fatura_no')], ['Satın alma tarihi', d('satin_alma_tarihi')],
+        ['Bedel', kacis(para(c.bedel, c.para_birimi))], ['Garanti bitiş', d('garanti_bitis') + ' <span class="cip ' + g.renk + '">' + kacis(g.ad) + '</span>'],
+        ['Bakım anlaşması', d('bakim_anlasma_id')],
+        ['Belge', c.dosya_yolu ? '<button class="en-btn ikincil kucuk" data-log="ozel" id="detayBelge">' + kacis(c.dosya_adi || 'Belgeyi aç') + '</button>' : '–']])
+      + blok('Diğer', [['Notlar', '<span style="white-space:pre-wrap">' + d('notlar') + '</span>'],
+        ['Oluşturan', kacis(c.olusturan || '–') + ' · ' + zamanDamgasi(c.created_at)],
+        ['Son güncelleme', kacis(c.guncelleyen || '–') + ' · ' + zamanDamgasi(c.updated_at)]]);
+    if ($('detayBelge')) $('detayBelge').addEventListener('click', () => belgeAc(c));
+    gecmisGetir(c);
+    $('detayDlg').showModal();
+    log('Cihaz görüntülendi', c.demirbas_no);
+  }
+
+  async function gecmisGetir(c) {
+    $('gecmisListe').innerHTML = '<li class="ust">Yükleniyor…</li>';
+    const { data, error } = await sb.from('cihaz_gecmis').select('islem,degisiklikler,kullanici,created_at')
+      .eq('cihaz_id', c.id).order('created_at', { ascending: false }).limit(50);
+    if (error) { $('gecmisListe').innerHTML = '<li class="ust">Geçmiş yüklenemedi.</li>'; return; }
+    if (!data.length) { $('gecmisListe').innerHTML = '<li class="ust">Kayıt yok.</li>'; return; }
+    $('gecmisListe').innerHTML = data.map(k => {
+      const farklar = k.degisiklikler ? Object.entries(k.degisiklikler)
+        .filter(([a]) => a !== 'dosya_yolu')
+        .map(([a, [eski, yeni]]) => '<b>' + kacis(ETIKET[a] || a) + ':</b> ' + kacis(gosterim(a, eski)) + ' → ' + kacis(gosterim(a, yeni))).join('<br>') : '';
+      return '<li><div class="ust">' + zamanDamgasi(k.created_at) + ' · ' + kacis(k.kullanici || 'bilinmiyor') + ' · ' + kacis(k.islem) + '</div>'
+        + (farklar ? '<div class="fark">' + farklar + '</div>' : '') + '</li>';
+    }).join('');
+  }
+  $('detayKapat').addEventListener('click', () => $('detayDlg').close());
+  $('detayDuzenle').addEventListener('click', () => { $('detayDlg').close(); if (detaydaki) formAc(detaydaki); });
+
+  // ---- Silme ----
+  async function sil(c) {
+    if (!confirm(c.demirbas_no + ' (' + c.marka + ' ' + c.model + ') envanterden kalıcı olarak silinsin mi?\n\nNot: Hurdaya ayrılan ya da kaybolan cihazlar için silmek yerine durumunu değiştirmen, geçmişin korunması açısından daha iyidir.')) return;
+    const { error } = await sb.from(TABLO).delete().eq('id', c.id);
+    if (error) { alert('Silinemedi: ' + error.message); return; }
+    if (c.dosya_yolu) await sb.storage.from(DEPO).remove([c.dosya_yolu]);
+    log('Cihaz silindi', c.demirbas_no);
+    yukle();
+  }
+
+  // ---- CSV dışa aktarma ----
+  function csvHucre(h) { return '"' + String(h == null ? '' : h).replace(/"/g, '""') + '"'; }
+  function csvIndir(ad, satirlar) {
+    const csv = '\uFEFF' + satirlar.map(s => s.map(csvHucre).join(';')).join('\r\n'); // Türkçe Excel: ; ayırıcı + UTF-8 BOM
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = ad; document.body.appendChild(a); a.click(); a.remove();
+  }
+  const DISA_ALANLAR = FORM_ALANLARI;
+  $('csvBtn').addEventListener('click', () => {
+    const liste = filtrelenmis();
+    const satirlar = [DISA_ALANLAR.map(a => ETIKET[a])].concat(liste.map(c => DISA_ALANLAR.map(a =>
+      a === 'tur_id' ? turAdi(c.tur_id) : a === 'bakim_anlasma_id' ? (c.bakim_anlasma_id ? anlasmaAdi(c.bakim_anlasma_id) : '')
+      : TARIH_ALANLARI.includes(a) ? (c[a] ? tarih(c[a]) : '') : a === 'bedel' ? (c.bedel == null ? '' : String(c.bedel).replace('.', ',')) : c[a])));
+    csvIndir('envanter-' + new Date().toISOString().slice(0, 10) + '.csv', satirlar);
+    log('CSV indirildi', 'Envanter: ' + liste.length + ' cihaz');
+  });
+
+  // ---- CSV içe aktarma ----
+  const ICE_ALANLAR = FORM_ALANLARI.filter(a => a !== 'bakim_anlasma_id');
+  $('sablonBtn').addEventListener('click', () => {
+    const ornek = { demirbas_no: 'DMR-0001', tur_id: 'Dizüstü', marka: 'Dell', model: 'Latitude 5440', seri_no: 'ABC1234',
+      hostname: 'ONBURO-LT01', durum: 'Kullanımda', bolum: 'Ön Büro', konum: 'Lobi', zimmetli_kisi: 'Ayşe Yılmaz', sicil_no: '1024', zimmet_bolum: 'Ön Büro', zimmet_gorev: 'Ön Büro Şefi',
+      zimmet_tarihi: '15.03.2026', ip_adresi: '192.168.10.25', mac_adresi: 'aa:bb:cc:dd:ee:ff', vlan: '10', switch_port: 'SW-LOBI / Gi1/0/5',
+      isletim_sistemi: 'Windows 11 Pro', ozellikler: 'i5, 16 GB RAM, 512 GB SSD', tedarikci: 'Örnek Bilişim', fatura_no: 'FT2026-118',
+      satin_alma_tarihi: '01.03.2026', bedel: '32.500,00', para_birimi: 'TRY', garanti_bitis: '01.03.2029', notlar: '' };
+    csvIndir('envanter-sablon.csv', [ICE_ALANLAR.map(a => ETIKET[a]), ICE_ALANLAR.map(a => ornek[a])]);
+  });
+  $('iceBtn').addEventListener('click', () => { $('iceDosya').value = ''; $('iceDosya').click(); });
+
+  function csvCoz(metin, ayirici) {
+    const satirlar = []; let satir = [], hucre = '', tirnak = false;
+    for (let i = 0; i < metin.length; i++) {
+      const ch = metin[i];
+      if (tirnak) {
+        if (ch === '"' && metin[i + 1] === '"') { hucre += '"'; i++; }
+        else if (ch === '"') tirnak = false;
+        else hucre += ch;
+      } else if (ch === '"') tirnak = true;
+      else if (ch === ayirici) { satir.push(hucre); hucre = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && metin[i + 1] === '\n') i++;
+        satir.push(hucre); hucre = '';
+        if (satir.some(h => h.trim() !== '')) satirlar.push(satir);
+        satir = [];
+      } else hucre += ch;
+    }
+    satir.push(hucre);
+    if (satir.some(h => h.trim() !== '')) satirlar.push(satir);
+    return satirlar;
+  }
+  function tarihCevir(s) {
+    s = String(s || '').trim();
+    if (!s) return null;
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); if (m) return s;
+    m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+    if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    return undefined; // geçersiz
+  }
+  function tutarCevir(s) {
+    s = String(s || '').trim().replace(/\s|₺|TL|\$|€/gi, '');
+    if (!s) return null;
+    if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+    const n = Number(s);
+    return n >= 0 ? n : undefined;
+  }
+
+  $('iceDosya').addEventListener('change', async () => {
+    const dosya = $('iceDosya').files[0];
+    if (!dosya) return;
+    const tampon = await dosya.arrayBuffer();
+    // Excel'in Türkçe CSV'leri genelde Windows-1254 kodlamasıdır; UTF-8 bozuk görünürse ona geç
+    let metin = new TextDecoder('utf-8').decode(tampon);
+    if (metin.includes('\uFFFD')) metin = new TextDecoder('windows-1254').decode(tampon);
+    metin = metin.replace(/^\uFEFF/, '');
+    const ilkSatir = metin.split(/\r?\n/)[0] || '';
+    const ayirici = (ilkSatir.split(';').length >= ilkSatir.split(',').length) ? ';' : ',';
+    const tablo = csvCoz(metin, ayirici);
+    if (tablo.length < 2) { alert('Dosyada başlık satırı dışında veri bulunamadı.'); return; }
+
+    const etiketten = Object.fromEntries(ALANLAR.map(([a, e]) => [kucult(e), a]));
+    const sutunlar = tablo[0].map(b => etiketten[kucult(b.trim())] || null);
+    const eksik = ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum'].filter(a => !sutunlar.includes(a));
+    if (eksik.length) { alert('Zorunlu sütun(lar) bulunamadı: ' + eksik.map(a => ETIKET[a]).join(', ') + '\n\nLütfen "CSV şablonu" ile indirilen başlıkları kullanın.'); return; }
+
+    const mevcutDemirbas = new Set(cihazlar.map(c => kucult(c.demirbas_no)));
+    const dosyadaki = new Set();
+    const hatalar = [], yeniTurler = new Set();
+    iceSatirlar = [];
+    tablo.slice(1).forEach((hucreler, i) => {
+      const no = i + 2, v = {}, sorun = [];
+      sutunlar.forEach((a, j) => { if (a && a !== 'bakim_anlasma_id' && a !== 'dosya_adi') { const d = (hucreler[j] || '').trim(); v[a] = d === '' ? null : d; } });
+      ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum'].forEach(a => { if (!v[a]) sorun.push(ETIKET[a] + ' boş'); });
+      if (v.demirbas_no) {
+        if (mevcutDemirbas.has(kucult(v.demirbas_no))) sorun.push('demirbaş no zaten kayıtlı');
+        else if (dosyadaki.has(kucult(v.demirbas_no))) sorun.push('demirbaş no dosyada tekrar ediyor');
+        dosyadaki.add(kucult(v.demirbas_no));
+      }
+      v.durum = v.durum || 'Kullanımda';
+      const durum = DURUMLAR.find(d => kucult(d) === kucult(v.durum));
+      if (!durum) sorun.push('durum geçersiz (' + v.durum + ')'); else v.durum = durum;
+      if (v.ip_adresi && !IP_RE.test(v.ip_adresi)) sorun.push('IP geçersiz');
+      if (v.mac_adresi) { const m = macNormalize(v.mac_adresi); if (!m) sorun.push('MAC geçersiz'); else v.mac_adresi = m; }
+      if (v.vlan != null) { const n = Number(v.vlan); if (!Number.isInteger(n) || n < 1 || n > 4094) sorun.push('VLAN geçersiz'); else v.vlan = n; }
+      TARIH_ALANLARI.forEach(a => { if (v[a] != null) { const t = tarihCevir(v[a]); if (t === undefined) sorun.push(ETIKET[a] + ' geçersiz'); else v[a] = t; } });
+      if (v.bedel != null) { const t = tutarCevir(v.bedel); if (t === undefined) sorun.push('bedel geçersiz'); else v.bedel = t; }
+      v.para_birimi = (v.para_birimi || 'TRY').toUpperCase().replace('TL', 'TRY');
+      if (!['TRY', 'USD', 'EUR'].includes(v.para_birimi)) sorun.push('para birimi TRY/USD/EUR olmalı');
+      if (v.tur_id && !turler.some(t => kucult(t.ad) === kucult(v.tur_id))) yeniTurler.add(v.tur_id.trim());
+      if (sorun.length) hatalar.push('Satır ' + no + (v.demirbas_no ? ' (' + v.demirbas_no + ')' : '') + ': ' + sorun.join(', '));
+      else iceSatirlar.push(v);
+    });
+
+    $('iceOzet').innerHTML = '<b>' + (tablo.length - 1) + '</b> satır okundu · <b style="color:#3ecf7a">' + iceSatirlar.length + '</b> eklenecek'
+      + (hatalar.length ? ' · <b style="color:#f85149">' + hatalar.length + '</b> hatalı satır atlanacak' : '')
+      + (yeniTurler.size ? '<br>Listede olmayan şu cihaz türleri otomatik eklenecek: <b>' + kacis([...yeniTurler].join(', ')) + '</b>' : '');
+    $('iceHatalar').hidden = !hatalar.length;
+    $('iceHatalar').innerHTML = hatalar.map(kacis).join('<br>');
+    $('iceSonuc').textContent = '';
+    $('iceOnay').disabled = !iceSatirlar.length;
+    $('iceOnay').dataset.yeniTurler = JSON.stringify([...yeniTurler]);
+    $('iceDlg').showModal();
+  });
+
+  $('iceKapat').addEventListener('click', () => $('iceDlg').close());
+  $('iceOnay').addEventListener('click', async () => {
+    $('iceOnay').disabled = true; $('iceSonuc').style.color = '#8b949e'; $('iceSonuc').textContent = 'Aktarılıyor…';
+    try {
+      for (const ad of JSON.parse($('iceOnay').dataset.yeniTurler || '[]')) await turEkle(ad);
+      const kayitlar = iceSatirlar.map(v => ({ ...v, tur_id: turler.find(t => kucult(t.ad) === kucult(v.tur_id)).id }));
+      let eklenen = 0; const basarisiz = [];
+      for (let i = 0; i < kayitlar.length; i += 50) {
+        const parca = kayitlar.slice(i, i + 50);
+        const { error } = await sb.from(TABLO).insert(parca);
+        if (!error) { eklenen += parca.length; continue; }
+        // Toplu ekleme başarısızsa hangi satırın sorunlu olduğunu bulmak için tek tek dene
+        for (const k of parca) {
+          const r = await sb.from(TABLO).insert(k);
+          if (r.error) basarisiz.push(k.demirbas_no + ': ' + veritabaniHatasi(r.error)); else eklenen++;
+        }
+      }
+      log('Envanter içe aktarıldı', eklenen + ' cihaz eklendi' + (basarisiz.length ? ', ' + basarisiz.length + ' başarısız' : ''));
+      $('iceSonuc').style.color = basarisiz.length ? '#e3b341' : '#3ecf7a';
+      $('iceSonuc').textContent = eklenen + ' cihaz eklendi.' + (basarisiz.length ? ' ' + basarisiz.length + ' kayıt eklenemedi.' : '');
+      if (basarisiz.length) { $('iceHatalar').hidden = false; $('iceHatalar').innerHTML = basarisiz.map(kacis).join('<br>'); }
+      yukle();
+    } catch (err) {
+      $('iceSonuc').style.color = '#f85149'; $('iceSonuc').textContent = 'İçe aktarma durdu: ' + err.message;
+      $('iceOnay').disabled = false;
+    }
+  });
+
+  // ---- Başlangıç ----
+  window.oturumHazir.then(async () => {
+    const { data } = await sb.from('sistem_ayar').select('bakim_uyari_gun').eq('id', 1).maybeSingle();
+    if (data && data.bakim_uyari_gun) GARANTI_UYARI_GUN = data.bakim_uyari_gun;
+    $('stGarantiBaslik').textContent = 'Garantisi Yaklaşan (' + GARANTI_UYARI_GUN + ' gün)';
+    $('optGarantiYakin').textContent = 'Yaklaşan (' + GARANTI_UYARI_GUN + ' gün)';
+    $('uygulama').hidden = false;
+    yukle();
+  });
+  </script>
+</body>
+</html>

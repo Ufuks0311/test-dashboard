@@ -5,7 +5,7 @@
   const SAYFALAR = {
     '': 'genel-bakis', 'index.html': 'genel-bakis',
     'sunucular.html': 'sunucular', 'subnet.html': 'subnet', 'kayitlar.html': 'kayitlar',
-    'bakim.html': 'bakim', 'giris.html': 'giris', 'ayarlar.html': 'ayarlar'
+    'bakim.html': 'bakim', 'giris.html': 'giris', 'ayarlar.html': 'ayarlar', 'envanter.html': 'envanter'
   };
   const SAYFA = SAYFALAR[location.pathname.split('/').pop()] || 'genel-bakis';
 

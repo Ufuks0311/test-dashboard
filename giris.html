@@ -57,7 +57,7 @@
   );
   const BOSTA_SURE = (parseInt(localStorage.getItem('panoBostaSureDk') || '5', 10) || 5) * 60 * 1000, ETKINLIK_ANAHTAR = 'panoSonEtkinlik';
   // Girişten sonra gidilecek sayfa: sadece panonun kendi sayfalarına izin ver (dış siteye yönlendirme açığı olmasın)
-  const IZINLI_HEDEFLER = ['index.html', 'sunucular.html', 'subnet.html', 'kayitlar.html', 'bakim.html', 'ayarlar.html'];
+  const IZINLI_HEDEFLER = ['index.html', 'sunucular.html', 'subnet.html', 'kayitlar.html', 'bakim.html', 'envanter.html', 'ayarlar.html'];
   const parametreler = new URLSearchParams(location.search);
   const istenen = parametreler.get('next');
   const hedef = IZINLI_HEDEFLER.includes(istenen) ? istenen : 'index.html';

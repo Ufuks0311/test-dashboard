@@ -43,6 +43,7 @@
     .cip.subnet { color:#e3b341; background:rgba(227,179,65,.12); }
     .cip.kayitlar { color:#bc8cff; background:rgba(188,140,255,.12); }
     .cip.bakim { color:#ff7b72; background:rgba(255,123,114,.12); }
+    .cip.envanter { color:#56d4dd; background:rgba(86,212,221,.12); }
     .cip.ayarlar { color:#79c0ff; background:rgba(121,192,255,.12); }
     .cip.giris { color:#8b949e; background:rgba(139,148,158,.14); }
     .lg-bos { padding:2rem; text-align:center; color:#8b949e; }
@@ -57,7 +58,7 @@
     <h1>Kayıt Görüntüleyici</h1>
     <nav>
       <a href="index.html">Genel Bakış</a>
-      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html" class="active">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="ayarlar.html">Ayarlar</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html" class="active">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="envanter.html">Envanter</a> <a href="ayarlar.html">Ayarlar</a>
     </nav>
     <span id="saat" class="saat"></span>
   </header>
@@ -82,6 +83,7 @@
           <option value="kayitlar">Kayıtlar</option>
           <option value="bakim">Bakım Anlaşmaları</option>
           <option value="giris">Giriş</option>
+          <option value="envanter">Envanter</option>
           <option value="ayarlar">Ayarlar</option>
         </select></div>
       <div class="lg-alan"><label for="fOlay">Olay</label>
@@ -106,6 +108,16 @@
             <option>Değer kopyalandı</option>
             <option>Kopyalama başarısız</option>
             <option>Geçmiş temizlendi</option>
+          </optgroup>
+          <optgroup label="Envanter">
+            <option>Cihaz eklendi</option>
+            <option>Cihaz güncellendi</option>
+            <option>Cihaz silindi</option>
+            <option>Cihaz görüntülendi</option>
+            <option>Envanter içe aktarıldı</option>
+            <option>Cihaz türü eklendi</option>
+            <option>Cihaz türü güncellendi</option>
+            <option>Cihaz türü silindi</option>
           </optgroup>
           <optgroup label="Ayarlar">
             <option>Ayarlar kaydedildi</option>
@@ -161,7 +173,7 @@
   const SB = 'https://ayxjajcymhqslanqkpqd.supabase.co/rest/v1/olay_log';
   const SAYFA_BOYU = 25, SUTUN = 5;
   const SEKME_AD = { 'genel-bakis': 'Genel Bakış', 'sunucular': 'Sunucular', 'subnet': 'Subnet Hesaplama',
-    'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş', 'ayarlar': 'Ayarlar' };
+    'kayitlar': 'Kayıtlar', 'bakim': 'Bakım Anlaşmaları', 'giris': 'Giriş', 'ayarlar': 'Ayarlar', 'envanter': 'Envanter' };
   const UYARI_OLAYLARI = ['Giriş başarısız', 'Kopyalama başarısız'];
   const DIKKAT_OLAYLARI = ['Oturum zaman aşımı', 'Anlaşma silindi', 'Geçmiş temizlendi'];
   const GIRISSIZ = '__girissiz__';
