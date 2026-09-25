@@ -7,6 +7,12 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/auth.js"></script>
+  <style>
+    .kart .alt-durum { font-size:.78rem; color:#8b949e; margin-top:.35rem; }
+    .kart .alt-durum.dikkat { color:#e3b341; }
+    .kart .alt-durum.kirmizi { color:#f85149; }
+    .kart .alt-durum.yesil { color:#3ecf7a; }
+  </style>
 </head>
 <body>
   <header>
@@ -25,10 +31,64 @@
       <div class="kart"><h2>Uptime</h2><p class="deger">%99.8</p></div>
       <div class="kart"><h2>Ağ Trafiği</h2><p class="deger">2.4 Gb/s</p></div>
       <div class="kart"><h2>Wi-Fi freknası</h2><p class="deger">5 Ghz</p></div>
+      <div class="kart"><h2>Bakım Anlaşmaları</h2><p class="deger" id="bakimSayisi">–</p><p class="alt-durum" id="bakimDurum"></p></div>
+      <div class="kart"><h2>Envanter Listesi</h2><p class="deger" id="envanterSayisi">–</p><p class="alt-durum" id="envanterDurum"></p></div>
     </section>
     <button id="yenile" onclick="Promise.resolve(window.logYaz && logYaz('Durum yenilendi', 'Genel bakış sayfası yeniden yüklendi')).finally(() => location.reload())">Durumu Yenile</button>
   </main>
   <script src="js/log.js"></script>
   <script src="js/app.js"></script>
+  <script>
+  // Genel Bakış özet kutuları: Bakım Anlaşmaları ve Envanter Listesi (canlı veri)
+  window.oturumHazir.then(async () => {
+    const sb = window.sb;
+    const bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    let uyariGun = 30;
+    try {
+      const { data } = await sb.from('sistem_ayar').select('bakim_uyari_gun').eq('id', 1).maybeSingle();
+      if (data && data.bakim_uyari_gun) uyariGun = data.bakim_uyari_gun;
+    } catch (e) {}
+    const kalanGun = tarih => tarih ? Math.round((new Date(tarih + 'T00:00:00') - bugun) / 86400000) : null;
+
+    // Bakım Anlaşmaları
+    try {
+      const { data, error } = await sb.from('bakim_anlasma').select('bitis');
+      if (error) throw error;
+      let dolmus = 0, yakin = 0;
+      data.forEach(k => {
+        const g = kalanGun(k.bitis);
+        if (g === null) return;
+        if (g < 0) dolmus++; else if (g <= uyariGun) yakin++;
+      });
+      document.getElementById('bakimSayisi').textContent = data.length;
+      const durum = document.getElementById('bakimDurum');
+      if (dolmus) { durum.textContent = dolmus + ' süresi dolmuş'; durum.className = 'alt-durum kirmizi'; }
+      else if (yakin) { durum.textContent = yakin + ' yaklaşıyor'; durum.className = 'alt-durum dikkat'; }
+      else { durum.textContent = 'Tümü güncel'; durum.className = 'alt-durum yesil'; }
+    } catch (e) {
+      document.getElementById('bakimSayisi').textContent = '–';
+      document.getElementById('bakimDurum').textContent = 'Yüklenemedi';
+    }
+
+    // Envanter Listesi
+    try {
+      const { data, error } = await sb.from('cihaz').select('durum,garanti_bitis');
+      if (error) throw error;
+      let sorunlu = 0;
+      data.forEach(c => {
+        if (c.durum === 'Arızalı' || c.durum === 'Serviste' || c.durum === 'Kayıp') { sorunlu++; return; }
+        const g = kalanGun(c.garanti_bitis);
+        if (g !== null && g <= uyariGun) sorunlu++;
+      });
+      document.getElementById('envanterSayisi').textContent = data.length;
+      const durum = document.getElementById('envanterDurum');
+      if (sorunlu) { durum.textContent = sorunlu + ' dikkat gerekiyor'; durum.className = 'alt-durum dikkat'; }
+      else { durum.textContent = 'Sorun yok'; durum.className = 'alt-durum yesil'; }
+    } catch (e) {
+      document.getElementById('envanterSayisi').textContent = '–';
+      document.getElementById('envanterDurum').textContent = 'Yüklenemedi';
+    }
+  });
+  </script>
 </body>
 </html>
