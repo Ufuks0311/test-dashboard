@@ -452,6 +452,7 @@
     document.querySelectorAll('#cihazForm .hatali').forEach(el => el.classList.remove('hatali'));
     FORM_ALANLARI.forEach(a => { const el = $('c_' + a); if (el) el.value = c && c[a] != null ? c[a] : ''; });
     if (!c) { $('c_durum').value = 'Kullanımda'; $('c_para_birimi').value = 'TRY'; }
+    $('zimmetIptalBtn').hidden = !c; // yeni kayıtta iptal edilecek bir zimmet olmadığı için gösterilmez
     $('c_dosya').value = '';
     if (c && c.dosya_yolu) {
       $('mevcutDosya').hidden = false;
