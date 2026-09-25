@@ -5,7 +5,8 @@ header { display:flex; align-items:center; gap:1.5rem; padding:1rem 2rem; backgr
 header h1 { font-size:1.2rem; width:280px; flex-shrink:0; white-space:nowrap; }
 nav { display:flex; gap:1rem; }
 nav a { color:var(--metin); text-decoration:none; opacity:.6; }
-nav a.active, nav a:hover { opacity:1; color:var(--vurgu); }
+nav a.active { opacity:1; color:var(--yesil); }
+nav a:hover { opacity:1; color:var(--vurgu); }
 .saat { margin-left:auto; font-variant-numeric:tabular-nums; opacity:.8; }
 main { padding:2rem; }
 .kartlar { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem; }
