@@ -380,7 +380,7 @@
       if (duzenlenen && duzenlenen.dosya_yolu && 'dosya_yolu' in veri && veri.dosya_yolu !== duzenlenen.dosya_yolu) {
         await sb.storage.from(DEPO).remove([duzenlenen.dosya_yolu]);
       }
-      log(duzenlenen ? 'Anlaşma güncellendi' : 'Anlaşma eklendi', 'Kayıt #' + kayitId);
+      log(duzenlenen ? 'Anlaşma güncellendi' : 'Anlaşma eklendi', veri.sistem + ' — ' + veri.konu + ' (Kayıt #' + kayitId + ')');
       $('formDlg').close();
       yukle();
     } catch (err) {
