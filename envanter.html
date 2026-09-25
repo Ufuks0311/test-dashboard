@@ -153,11 +153,12 @@
         <div><label for="c_hostname">Hostname</label><input id="c_hostname" maxlength="100"></div>
 
         <h3>Konum ve zimmet</h3>
-        <div><label for="c_bolum">Bölüm <span class="yildiz">*</span></label><input id="c_bolum" required maxlength="120" list="bolumListe"><datalist id="bolumListe"></datalist></div>
+        <div><label for="c_bolum">Bölüm <span class="yildiz">*</span></label>
+          <div class="en-tur-satir"><select id="c_bolum" required></select><button type="button" class="en-btn ikincil kucuk" id="yeniBolumBtn" data-log="ozel" title="Listede olmayan bir bölüm ekle">+ Yeni bölüm</button></div></div>
         <div class="iki"><label for="c_konum">Konum</label><input id="c_konum" maxlength="150" placeholder="ör. Lobi, Oda 305, Sistem odası"></div>
         <div><label for="c_zimmetli_kisi">Zimmetli kişi</label><input id="c_zimmetli_kisi" maxlength="120"></div>
         <div><label for="c_sicil_no">Sicil no</label><input id="c_sicil_no" maxlength="40"></div>
-        <div><label for="c_zimmet_bolum">Kişinin bölümü</label><input id="c_zimmet_bolum" maxlength="120" list="bolumListe"></div>
+        <div><label for="c_zimmet_bolum">Kişinin bölümü</label><select id="c_zimmet_bolum"></select></div>
         <div><label for="c_zimmet_gorev">Görevi</label><input id="c_zimmet_gorev" maxlength="100" placeholder="ör. Ön Büro Şefi"></div>
         <div><label for="c_zimmet_tarihi">Zimmet tarihi</label><input id="c_zimmet_tarihi" type="date"></div>
 
@@ -233,8 +234,8 @@
   // Alan adı → Türkçe etiket (form, detay, geçmiş ve CSV için ortak)
   const ALANLAR = [
     ['demirbas_no', 'Demirbaş no'], ['tur_id', 'Cihaz türü'], ['marka', 'Marka'], ['model', 'Model'],
-    ['seri_no', 'Seri no'], ['hostname', 'Hostname'], ['durum', 'Durum'], ['bolum', 'Bölüm'], ['konum', 'Konum'],
-    ['zimmetli_kisi', 'Zimmetli kişi'], ['sicil_no', 'Sicil no'], ['zimmet_bolum', 'Kişinin bölümü'], ['zimmet_gorev', 'Görevi'], ['zimmet_tarihi', 'Zimmet tarihi'],
+    ['seri_no', 'Seri no'], ['hostname', 'Hostname'], ['durum', 'Durum'], ['bolum_id', 'Bölüm'], ['konum', 'Konum'],
+    ['zimmetli_kisi', 'Zimmetli kişi'], ['sicil_no', 'Sicil no'], ['zimmet_bolum_id', 'Kişinin bölümü'], ['zimmet_gorev', 'Görevi'], ['zimmet_tarihi', 'Zimmet tarihi'],
     ['ip_adresi', 'IP adresi'], ['mac_adresi', 'MAC adresi'], ['vlan', 'VLAN'], ['switch_port', 'Switch / port'],
     ['isletim_sistemi', 'İşletim sistemi / firmware'], ['ozellikler', 'Özellikler'], ['tedarikci', 'Tedarikçi'],
     ['fatura_no', 'Fatura no'], ['satin_alma_tarihi', 'Satın alma tarihi'], ['bedel', 'Satın alma bedeli'],
@@ -245,7 +246,7 @@
   const FORM_ALANLARI = ALANLAR.map(a => a[0]).filter(a => a !== 'dosya_adi');
   const TARIH_ALANLARI = ['zimmet_tarihi', 'satin_alma_tarihi', 'garanti_bitis'];
 
-  let cihazlar = [], turler = [], anlasmalar = [], duzenlenen = null, detaydaki = null, iceSatirlar = [];
+  let cihazlar = [], turler = [], bolumler = [], anlasmalar = [], duzenlenen = null, detaydaki = null, iceSatirlar = [];
 
   const $ = id => document.getElementById(id);
   const log = (o, d) => { if (window.logYaz) logYaz(o, d); };
@@ -257,7 +258,8 @@
   const zamanDamgasi = t => t ? new Date(t).toLocaleString('tr-TR') : '–';
   const para = (tutar, pb) => tutar == null ? '–' : new Intl.NumberFormat('tr-TR', { style: 'currency', currency: pb || 'TRY' }).format(tutar);
   const turAdi = id => (turler.find(t => t.id === id) || {}).ad || '–';
-  const anlasmaAdi = id => { const a = anlasmalar.find(x => x.id === id); return a ? a.sistem + ' — ' + a.bolum : '–'; };
+  const anlasmaAdi = id => { const a = anlasmalar.find(x => x.id === id); return a ? a.sistem + ' — ' + bolumAdi(a.bolum_id) : '–'; };
+  const bolumAdi = id => (bolumler.find(b => b.id === id) || {}).ad || '–';
   const IP_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
 
   function macNormalize(m) {
@@ -276,6 +278,7 @@
   function gosterim(alan, deger) {
     if (deger == null || deger === '') return '–';
     if (alan === 'tur_id') return turAdi(Number(deger));
+    if (alan === 'bolum_id' || alan === 'zimmet_bolum_id') return bolumAdi(Number(deger));
     if (alan === 'bakim_anlasma_id') return anlasmaAdi(Number(deger));
     if (TARIH_ALANLARI.includes(alan)) return tarih(String(deger).slice(0, 10));
     if (alan === 'bedel') return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(deger);
@@ -285,15 +288,17 @@
   // ---- Yükleme ----
   async function yukle() {
     $('govde').innerHTML = '<tr><td colspan="9" class="en-bos">Yükleniyor…</td></tr>';
-    const [c, t, a] = await Promise.all([
+    const [c, t, bl, a] = await Promise.all([
       sb.from(TABLO).select('*').limit(5000),
       sb.from('cihaz_turu').select('id,ad').order('ad'),
-      sb.from('bakim_anlasma').select('id,sistem,bolum').order('sistem')
+      sb.from('bolum').select('id,ad').order('ad'),
+      sb.from('bakim_anlasma').select('id,sistem,bolum_id').order('sistem')
     ]);
-    const hata = c.error || t.error || a.error;
+    const hata = c.error || t.error || bl.error || a.error;
     if (hata) { $('govde').innerHTML = '<tr><td colspan="9" class="en-bos" style="color:#f85149">Envanter yüklenemedi: ' + kacis(hata.message) + '</td></tr>'; return; }
     cihazlar = (c.data || []).sort((x, y) => x.demirbas_no.localeCompare(y.demirbas_no, 'tr', { numeric: true }));
     turler = (t.data || []).sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
+    bolumler = (bl.data || []).sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
     anlasmalar = a.data || [];
     listeleriDoldur(); ozet(); ciz();
   }
@@ -302,14 +307,15 @@
     const secTur = $('fTur').value, secBolum = $('fBolum').value;
     $('fTur').innerHTML = '<option value="">Tümü</option>' + turler.map(t => '<option value="' + t.id + '">' + kacis(t.ad) + '</option>').join('');
     if (turler.some(t => String(t.id) === secTur)) $('fTur').value = secTur;
-    const bolumler = [...new Set(cihazlar.map(c => c.bolum).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
-    $('fBolum').innerHTML = '<option value="">Tümü</option>' + bolumler.map(b => '<option>' + kacis(b) + '</option>').join('');
-    if (bolumler.includes(secBolum)) $('fBolum').value = secBolum;
-    // Bölüm önerileri: envanter + bakım anlaşmalarındaki bölümler
-    const tumBolumler = [...new Set(bolumler.concat(anlasmalar.map(a => a.bolum)))].sort((a, b) => a.localeCompare(b, 'tr'));
-    $('bolumListe').innerHTML = tumBolumler.map(b => '<option value="' + kacis(b) + '">').join('');
+    const secZimmetBolum = $('c_zimmet_bolum').value;
+    const bolumSecenekleri = bolumler.map(b => '<option value="' + b.id + '">' + kacis(b.ad) + '</option>').join('');
+    $('fBolum').innerHTML = '<option value="">Tümü</option>' + bolumSecenekleri;
+    if (bolumler.some(b => String(b.id) === secBolum)) $('fBolum').value = secBolum;
+    $('c_bolum').innerHTML = '<option value="">Seçin…</option>' + bolumSecenekleri;
+    $('c_zimmet_bolum').innerHTML = '<option value="">— Seçilmedi —</option>' + bolumSecenekleri;
+    if (secZimmetBolum) $('c_zimmet_bolum').value = secZimmetBolum;
     $('c_tur_id').innerHTML = '<option value="">Seçin…</option>' + turler.map(t => '<option value="' + t.id + '">' + kacis(t.ad) + '</option>').join('');
-    $('c_bakim_anlasma_id').innerHTML = '<option value="">— Yok —</option>' + anlasmalar.map(a => '<option value="' + a.id + '">' + kacis(a.sistem + ' — ' + a.bolum) + '</option>').join('');
+    $('c_bakim_anlasma_id').innerHTML = '<option value="">— Yok —</option>' + anlasmalar.map(a => '<option value="' + a.id + '">' + kacis(a.sistem + ' — ' + bolumAdi(a.bolum_id)) + '</option>').join('');
   }
   $('fDurum').innerHTML += DURUMLAR.map(d => '<option>' + d + '</option>').join('');
   $('c_durum').innerHTML = DURUMLAR.map(d => '<option>' + d + '</option>').join('');
@@ -330,19 +336,19 @@
     const tur = $('fTur').value, bolum = $('fBolum').value, durum = $('fDurum').value, garanti = $('fGaranti').value;
     return cihazlar.filter(c => {
       if (tur && String(c.tur_id) !== tur) return false;
-      if (bolum && c.bolum !== bolum) return false;
+      if (bolum && String(c.bolum_id) !== bolum) return false;
       if (durum && c.durum !== durum) return false;
       if (garanti && garantiDurumu(c).kod !== garanti) return false;
       if (!kelimeler.length) return true;
-      const metin = kucult([c.demirbas_no, turAdi(c.tur_id), c.marka, c.model, c.seri_no, c.hostname, c.bolum, c.konum,
-        c.zimmetli_kisi, c.sicil_no, c.zimmet_bolum, c.zimmet_gorev, c.ip_adresi, c.mac_adresi, c.switch_port, c.isletim_sistemi, c.ozellikler,
+      const metin = kucult([c.demirbas_no, turAdi(c.tur_id), c.marka, c.model, c.seri_no, c.hostname, bolumAdi(c.bolum_id), c.konum,
+        c.zimmetli_kisi, c.sicil_no, bolumAdi(c.zimmet_bolum_id), c.zimmet_gorev, c.ip_adresi, c.mac_adresi, c.switch_port, c.isletim_sistemi, c.ozellikler,
         c.tedarikci, c.fatura_no, c.notlar].join(' '));
       return kelimeler.every(w => metin.includes(w));
     });
   }
 
   function zimmetAlt(c) {
-    const p = [c.zimmet_gorev, c.zimmet_bolum, c.sicil_no ? 'Sicil: ' + c.sicil_no : null].filter(Boolean);
+    const p = [c.zimmet_gorev, bolumAdi(c.zimmet_bolum_id), c.sicil_no ? 'Sicil: ' + c.sicil_no : null].filter(Boolean);
     return p.length ? '<br><span class="alt">' + kacis(p.join(' · ')) + '</span>' : '';
   }
 
@@ -359,7 +365,7 @@
         + '<td class="mono"><strong>' + kacis(c.demirbas_no) + '</strong>' + (c.seri_no ? '<br><span class="alt">SN: ' + kacis(c.seri_no) + '</span>' : '') + '</td>'
         + '<td>' + kacis(turAdi(c.tur_id)) + '</td>'
         + '<td>' + kacis(c.marka) + '<br><span class="alt">' + kacis(c.model) + '</span></td>'
-        + '<td>' + kacis(c.bolum) + (c.konum ? '<br><span class="alt">' + kacis(c.konum) + '</span>' : '') + '</td>'
+        + '<td>' + kacis(bolumAdi(c.bolum_id)) + (c.konum ? '<br><span class="alt">' + kacis(c.konum) + '</span>' : '') + '</td>'
         + '<td>' + (c.zimmetli_kisi ? kacis(c.zimmetli_kisi) + zimmetAlt(c) : '<span class="alt">–</span>') + '</td>'
         + '<td class="mono">' + (c.ip_adresi ? kacis(c.ip_adresi) : '<span class="alt">–</span>') + (c.hostname ? '<br><span class="alt">' + kacis(c.hostname) + '</span>' : '') + '</td>'
         + '<td><span class="cip ' + (DURUM_RENK[c.durum] || 'gri') + '">' + kacis(c.durum) + '</span></td>'
@@ -407,6 +413,30 @@
     } catch (err) { $('formHata').textContent = err.message; }
   });
 
+  // ---- Bölüm ekleme (formdan) ----
+  async function bolumEkle(ad) {
+    ad = String(ad || '').trim().slice(0, 80);
+    if (!ad) return null;
+    const mevcut = bolumler.find(b => kucult(b.ad) === kucult(ad));
+    if (mevcut) return mevcut;
+    const { data, error } = await sb.from('bolum').insert({ ad }).select('id,ad').single();
+    if (error) throw new Error(/duplicate|unique/i.test(error.message) ? '"' + ad + '" bölümü zaten var.' : error.message);
+    bolumler.push(data); bolumler.sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
+    log('Bölüm eklendi', ad);
+    return data;
+  }
+  $('yeniBolumBtn').addEventListener('click', async () => {
+    const ad = prompt('Yeni bölümün adı (ör. Ön Büro):');
+    if (!ad || !ad.trim()) return;
+    try {
+      const b = await bolumEkle(ad);
+      const secili = { ...formOku(), bolum_id: b.id };
+      listeleriDoldur();
+      FORM_ALANLARI.forEach(a => { if ($('c_' + a)) $('c_' + a).value = secili[a] == null ? '' : secili[a]; });
+      $('c_bolum').value = b.id;
+    } catch (err) { $('formHata').textContent = err.message; }
+  });
+
   // ---- Ekle / Düzenle ----
   function formOku() {
     const v = {};
@@ -437,12 +467,14 @@
     const v = formOku(), hatalar = [];
     const isaretle = (a, m) => { $('c_' + a).classList.add('hatali'); hatalar.push(m); };
     document.querySelectorAll('#cihazForm .hatali').forEach(el => el.classList.remove('hatali'));
-    ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum', 'durum'].forEach(a => { if (!v[a]) isaretle(a, ETIKET[a] + ' zorunlu.'); });
+    ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum_id', 'durum'].forEach(a => { if (!v[a]) isaretle(a, ETIKET[a] + ' zorunlu.'); });
     if (v.ip_adresi && !IP_RE.test(v.ip_adresi)) isaretle('ip_adresi', 'IP adresi geçersiz (ör. 192.168.1.50).');
     if (v.mac_adresi) { const m = macNormalize(v.mac_adresi); if (!m) isaretle('mac_adresi', 'MAC adresi geçersiz (ör. aa:bb:cc:dd:ee:ff ya da aabb.ccdd.eeff).'); else v.mac_adresi = m; }
     if (v.vlan != null) { const n = Number(v.vlan); if (!Number.isInteger(n) || n < 1 || n > 4094) isaretle('vlan', 'VLAN 1–4094 arası olmalı.'); else v.vlan = n; }
     if (v.bedel != null) { const n = Number(v.bedel); if (!(n >= 0)) isaretle('bedel', 'Bedel geçersiz.'); else v.bedel = n; }
     v.tur_id = v.tur_id ? Number(v.tur_id) : null;
+    v.bolum_id = v.bolum_id ? Number(v.bolum_id) : null;
+    v.zimmet_bolum_id = v.zimmet_bolum_id ? Number(v.zimmet_bolum_id) : null;
     v.bakim_anlasma_id = v.bakim_anlasma_id ? Number(v.bakim_anlasma_id) : null;
     v.para_birimi = v.para_birimi || 'TRY';
     return { v, hatalar };
@@ -528,8 +560,8 @@
     $('detayIcerik').innerHTML =
       blok('Kimlik', [['Durum', '<span class="cip ' + (DURUM_RENK[c.durum] || 'gri') + '">' + kacis(c.durum) + '</span>'],
         ['Tür', d('tur_id')], ['Marka / model', kacis(c.marka + ' ' + c.model)], ['Seri no', d('seri_no')], ['Hostname', d('hostname')]])
-      + blok('Konum ve zimmet', [['Bölüm', d('bolum')], ['Konum', d('konum')], ['Zimmetli kişi', d('zimmetli_kisi')],
-        ['Sicil no', d('sicil_no')], ['Kişinin bölümü', d('zimmet_bolum')], ['Görevi', d('zimmet_gorev')], ['Zimmet tarihi', d('zimmet_tarihi')]])
+      + blok('Konum ve zimmet', [['Bölüm', d('bolum_id')], ['Konum', d('konum')], ['Zimmetli kişi', d('zimmetli_kisi')],
+        ['Sicil no', d('sicil_no')], ['Kişinin bölümü', d('zimmet_bolum_id')], ['Görevi', d('zimmet_gorev')], ['Zimmet tarihi', d('zimmet_tarihi')]])
       + blok('Ağ', [['IP adresi', d('ip_adresi')], ['MAC adresi', d('mac_adresi')], ['VLAN', d('vlan')], ['Switch / port', d('switch_port')]])
       + blok('Teknik', [['İşletim sistemi', d('isletim_sistemi')], ['Özellikler', d('ozellikler')]])
       + blok('Satın alma ve garanti', [['Tedarikçi', d('tedarikci')], ['Fatura no', d('fatura_no')], ['Satın alma tarihi', d('satin_alma_tarihi')],
@@ -584,7 +616,8 @@
   $('csvBtn').addEventListener('click', () => {
     const liste = filtrelenmis();
     const satirlar = [DISA_ALANLAR.map(a => ETIKET[a])].concat(liste.map(c => DISA_ALANLAR.map(a =>
-      a === 'tur_id' ? turAdi(c.tur_id) : a === 'bakim_anlasma_id' ? (c.bakim_anlasma_id ? anlasmaAdi(c.bakim_anlasma_id) : '')
+      a === 'tur_id' ? turAdi(c.tur_id) : a === 'bolum_id' ? bolumAdi(c.bolum_id) : a === 'zimmet_bolum_id' ? (c.zimmet_bolum_id ? bolumAdi(c.zimmet_bolum_id) : '')
+      : a === 'bakim_anlasma_id' ? (c.bakim_anlasma_id ? anlasmaAdi(c.bakim_anlasma_id) : '')
       : TARIH_ALANLARI.includes(a) ? (c[a] ? tarih(c[a]) : '') : a === 'bedel' ? (c.bedel == null ? '' : String(c.bedel).replace('.', ',')) : c[a])));
     csvIndir('envanter-' + new Date().toISOString().slice(0, 10) + '.csv', satirlar);
     log('CSV indirildi', 'Envanter: ' + liste.length + ' cihaz');
@@ -594,7 +627,7 @@
   const ICE_ALANLAR = FORM_ALANLARI.filter(a => a !== 'bakim_anlasma_id');
   $('sablonBtn').addEventListener('click', () => {
     const ornek = { demirbas_no: 'DMR-0001', tur_id: 'Dizüstü', marka: 'Dell', model: 'Latitude 5440', seri_no: 'ABC1234',
-      hostname: 'ONBURO-LT01', durum: 'Kullanımda', bolum: 'Ön Büro', konum: 'Lobi', zimmetli_kisi: 'Ayşe Yılmaz', sicil_no: '1024', zimmet_bolum: 'Ön Büro', zimmet_gorev: 'Ön Büro Şefi',
+      hostname: 'ONBURO-LT01', durum: 'Kullanımda', bolum_id: 'Ön Büro', konum: 'Lobi', zimmetli_kisi: 'Ayşe Yılmaz', sicil_no: '1024', zimmet_bolum_id: 'Ön Büro', zimmet_gorev: 'Ön Büro Şefi',
       zimmet_tarihi: '15.03.2026', ip_adresi: '192.168.10.25', mac_adresi: 'aa:bb:cc:dd:ee:ff', vlan: '10', switch_port: 'SW-LOBI / Gi1/0/5',
       isletim_sistemi: 'Windows 11 Pro', ozellikler: 'i5, 16 GB RAM, 512 GB SSD', tedarikci: 'Örnek Bilişim', fatura_no: 'FT2026-118',
       satin_alma_tarihi: '01.03.2026', bedel: '32.500,00', para_birimi: 'TRY', garanti_bitis: '01.03.2029', notlar: '' };
@@ -654,17 +687,17 @@
 
     const etiketten = Object.fromEntries(ALANLAR.map(([a, e]) => [kucult(e), a]));
     const sutunlar = tablo[0].map(b => etiketten[kucult(b.trim())] || null);
-    const eksik = ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum'].filter(a => !sutunlar.includes(a));
+    const eksik = ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum_id'].filter(a => !sutunlar.includes(a));
     if (eksik.length) { alert('Zorunlu sütun(lar) bulunamadı: ' + eksik.map(a => ETIKET[a]).join(', ') + '\n\nLütfen "CSV şablonu" ile indirilen başlıkları kullanın.'); return; }
 
     const mevcutDemirbas = new Set(cihazlar.map(c => kucult(c.demirbas_no)));
     const dosyadaki = new Set();
-    const hatalar = [], yeniTurler = new Set();
+    const hatalar = [], yeniTurler = new Set(), yeniBolumler = new Set();
     iceSatirlar = [];
     tablo.slice(1).forEach((hucreler, i) => {
       const no = i + 2, v = {}, sorun = [];
       sutunlar.forEach((a, j) => { if (a && a !== 'bakim_anlasma_id' && a !== 'dosya_adi') { const d = (hucreler[j] || '').trim(); v[a] = d === '' ? null : d; } });
-      ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum'].forEach(a => { if (!v[a]) sorun.push(ETIKET[a] + ' boş'); });
+      ['demirbas_no', 'tur_id', 'marka', 'model', 'bolum_id'].forEach(a => { if (!v[a]) sorun.push(ETIKET[a] + ' boş'); });
       if (v.demirbas_no) {
         if (mevcutDemirbas.has(kucult(v.demirbas_no))) sorun.push('demirbaş no zaten kayıtlı');
         else if (dosyadaki.has(kucult(v.demirbas_no))) sorun.push('demirbaş no dosyada tekrar ediyor');
@@ -681,18 +714,22 @@
       v.para_birimi = (v.para_birimi || 'TRY').toUpperCase().replace('TL', 'TRY');
       if (!['TRY', 'USD', 'EUR'].includes(v.para_birimi)) sorun.push('para birimi TRY/USD/EUR olmalı');
       if (v.tur_id && !turler.some(t => kucult(t.ad) === kucult(v.tur_id))) yeniTurler.add(v.tur_id.trim());
+      if (v.bolum_id && !bolumler.some(b => kucult(b.ad) === kucult(v.bolum_id))) yeniBolumler.add(v.bolum_id.trim());
+      if (v.zimmet_bolum_id && !bolumler.some(b => kucult(b.ad) === kucult(v.zimmet_bolum_id))) yeniBolumler.add(v.zimmet_bolum_id.trim());
       if (sorun.length) hatalar.push('Satır ' + no + (v.demirbas_no ? ' (' + v.demirbas_no + ')' : '') + ': ' + sorun.join(', '));
       else iceSatirlar.push(v);
     });
 
     $('iceOzet').innerHTML = '<b>' + (tablo.length - 1) + '</b> satır okundu · <b style="color:#3ecf7a">' + iceSatirlar.length + '</b> eklenecek'
       + (hatalar.length ? ' · <b style="color:#f85149">' + hatalar.length + '</b> hatalı satır atlanacak' : '')
-      + (yeniTurler.size ? '<br>Listede olmayan şu cihaz türleri otomatik eklenecek: <b>' + kacis([...yeniTurler].join(', ')) + '</b>' : '');
+      + (yeniTurler.size ? '<br>Listede olmayan şu cihaz türleri otomatik eklenecek: <b>' + kacis([...yeniTurler].join(', ')) + '</b>' : '')
+      + (yeniBolumler.size ? '<br>Listede olmayan şu bölümler otomatik eklenecek: <b>' + kacis([...yeniBolumler].join(', ')) + '</b>' : '');
     $('iceHatalar').hidden = !hatalar.length;
     $('iceHatalar').innerHTML = hatalar.map(kacis).join('<br>');
     $('iceSonuc').textContent = '';
     $('iceOnay').disabled = !iceSatirlar.length;
     $('iceOnay').dataset.yeniTurler = JSON.stringify([...yeniTurler]);
+    $('iceOnay').dataset.yeniBolumler = JSON.stringify([...yeniBolumler]);
     $('iceDlg').showModal();
   });
 
@@ -701,7 +738,12 @@
     $('iceOnay').disabled = true; $('iceSonuc').style.color = '#8b949e'; $('iceSonuc').textContent = 'Aktarılıyor…';
     try {
       for (const ad of JSON.parse($('iceOnay').dataset.yeniTurler || '[]')) await turEkle(ad);
-      const kayitlar = iceSatirlar.map(v => ({ ...v, tur_id: turler.find(t => kucult(t.ad) === kucult(v.tur_id)).id }));
+      for (const ad of JSON.parse($('iceOnay').dataset.yeniBolumler || '[]')) await bolumEkle(ad);
+      const kayitlar = iceSatirlar.map(v => ({ ...v,
+        tur_id: turler.find(t => kucult(t.ad) === kucult(v.tur_id)).id,
+        bolum_id: bolumler.find(b => kucult(b.ad) === kucult(v.bolum_id)).id,
+        zimmet_bolum_id: v.zimmet_bolum_id ? bolumler.find(b => kucult(b.ad) === kucult(v.zimmet_bolum_id)).id : null
+      }));
       let eklenen = 0; const basarisiz = [];
       for (let i = 0; i < kayitlar.length; i += 50) {
         const parca = kayitlar.slice(i, i + 50);

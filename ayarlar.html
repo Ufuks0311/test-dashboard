@@ -130,6 +130,18 @@
           <p class="ay-sonuc" id="turSonuc"></p>
         </section>
 
+        <!-- Bölümler -->
+        <section class="ay-kart">
+          <h2>Bölümler</h2>
+          <p class="aciklama">Envanter ve bakım anlaşmalarında kullanılan bölümler. Buradaki değişiklikler anında kaydedilir. Kullanımdaki bir bölüm silinemez, sadece yeniden adlandırılabilir.</p>
+          <ul class="ay-liste" id="bolumListe2"><li style="color:#8b949e">Yükleniyor…</li></ul>
+          <div class="ay-satir">
+            <input id="yeniBolum" type="text" maxlength="80" placeholder="ör. Rezervasyon" aria-label="Yeni bölüm">
+            <button class="ay-btn ikincil" id="bolumEkleBtn" data-log="ozel">Ekle</button>
+          </div>
+          <p class="ay-sonuc" id="bolumSonuc"></p>
+        </section>
+
         <!-- Test ve durum -->
         <section class="ay-kart">
           <h2>Test ve Durum</h2>
@@ -465,7 +477,58 @@
     }
   });
 
-  window.oturumHazir.then(() => { yukle(); turlarYukle(); });
+  // ---- Bölümler (Kaydet çubuğundan bağımsız, anında kaydedilir) ----
+  function bolumMesaj(m, tur) { $('bolumSonuc').className = 'ay-sonuc ' + (tur || ''); $('bolumSonuc').textContent = m; }
+  function bolumHatasi(err) { return /duplicate|unique/i.test(err.message) ? 'Bu isimde bir bölüm zaten var.' : err.message; }
+  async function bolumlerYukle() {
+    const [b, c, a] = await Promise.all([
+      sb.from('bolum').select('id,ad'),
+      sb.from('cihaz').select('bolum_id,zimmet_bolum_id'),
+      sb.from('bakim_anlasma').select('bolum_id')
+    ]);
+    if (b.error) { bolumMesaj('Bölümler yüklenemedi: ' + b.error.message, 'hata'); return; }
+    const sayac = {};
+    (c.data || []).forEach(r => { [r.bolum_id, r.zimmet_bolum_id].forEach(id => { if (id != null) sayac[id] = (sayac[id] || 0) + 1; }); });
+    (a.data || []).forEach(r => { if (r.bolum_id != null) sayac[r.bolum_id] = (sayac[r.bolum_id] || 0) + 1; });
+    const liste = (b.data || []).sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
+    $('bolumListe2').innerHTML = liste.map(x => {
+      const n = sayac[x.id] || 0;
+      return '<li><span>' + kacis(x.ad) + ' <span style="color:#8b949e;font-size:.8rem">(' + n + ' kullanım)</span></span>'
+        + '<span style="display:flex;gap:.2rem">'
+        + '<button type="button" data-log="ozel" data-bolum-duzenle="' + x.id + '" data-ad="' + kacis(x.ad) + '" aria-label="Yeniden adlandır: ' + kacis(x.ad) + '" title="Yeniden adlandır">✎</button>'
+        + (n ? '' : '<button type="button" data-log="ozel" data-bolum-sil="' + x.id + '" data-ad="' + kacis(x.ad) + '" aria-label="Sil: ' + kacis(x.ad) + '" title="Sil">×</button>')
+        + '</span></li>';
+    }).join('') || '<li style="color:#8b949e">Henüz bölüm yok.</li>';
+  }
+  async function bolumEkleAyar() {
+    const ad = $('yeniBolum').value.trim();
+    if (!ad) return;
+    const { error } = await sb.from('bolum').insert({ ad: ad.slice(0, 80) });
+    if (error) { bolumMesaj(bolumHatasi(error), 'hata'); return; }
+    $('yeniBolum').value = ''; bolumMesaj('"' + ad + '" eklendi.', 'ok');
+    log('Bölüm eklendi', ad); bolumlerYukle();
+  }
+  $('bolumEkleBtn').addEventListener('click', bolumEkleAyar);
+  $('yeniBolum').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); bolumEkleAyar(); } });
+  $('bolumListe2').addEventListener('click', async e => {
+    const duz = e.target.closest('button[data-bolum-duzenle]'), sil = e.target.closest('button[data-bolum-sil]');
+    if (duz) {
+      const eski = duz.dataset.ad, yeni = (prompt('Yeni ad:', eski) || '').trim().slice(0, 80);
+      if (!yeni || yeni === eski) return;
+      const { error } = await sb.from('bolum').update({ ad: yeni }).eq('id', Number(duz.dataset.bolumDuzenle));
+      if (error) { bolumMesaj(bolumHatasi(error), 'hata'); return; }
+      bolumMesaj('"' + eski + '" → "' + yeni + '" olarak değiştirildi.', 'ok');
+      log('Bölüm güncellendi', eski + ' → ' + yeni); bolumlerYukle();
+    } else if (sil) {
+      if (!confirm('"' + sil.dataset.ad + '" bölümü silinsin mi?')) return;
+      const { error } = await sb.from('bolum').delete().eq('id', Number(sil.dataset.bolumSil));
+      if (error) { bolumMesaj(/foreign key/i.test(error.message) ? 'Bu bölüm kullanımda olduğu için silinemez.' : error.message, 'hata'); return; }
+      bolumMesaj('"' + sil.dataset.ad + '" silindi.', 'ok');
+      log('Bölüm silindi', sil.dataset.ad); bolumlerYukle();
+    }
+  });
+
+  window.oturumHazir.then(() => { yukle(); turlarYukle(); bolumlerYukle(); });
   </script>
 </body>
 </html>

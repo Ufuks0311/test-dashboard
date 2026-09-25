@@ -53,6 +53,8 @@
     .bk-mevcut-dosya { font-size:.85rem; color:#c9d1d9; display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
     .bk-mevcut-dosya label { display:flex; gap:.35rem; align-items:center; color:#8b949e; font-size:.8rem; }
     .bk-mevcut-dosya input { width:auto; }
+    .bk-tur-satir { display:flex; gap:.4rem; }
+    .bk-tur-satir select { flex:1; }
     .dlg-alt { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.25rem; align-items:center; }
     .dlg-alt .bk-hata { margin-right:auto; }
     .bk-detay { display:grid; grid-template-columns:170px 1fr; gap:.55rem 1rem; font-size:.9rem; }
@@ -115,7 +117,8 @@
       <h2 id="formBaslik">Yeni Anlaşma</h2>
       <div class="bk-form">
         <div><label for="fSistem">İlgili sistem <span class="yildiz">*</span></label><input id="fSistem" required maxlength="120" placeholder="ör. Opera PMS"></div>
-        <div><label for="fBolumGir">İlgili bölüm <span class="yildiz">*</span></label><input id="fBolumGir" required maxlength="120" list="bolumListe" placeholder="ör. Ön Büro"><datalist id="bolumListe"></datalist></div>
+        <div><label for="fBolumGir">İlgili bölüm <span class="yildiz">*</span></label>
+          <div class="bk-tur-satir"><select id="fBolumGir" required></select><button type="button" class="bk-btn ikincil kucuk" id="yeniBolumBtn" data-log="ozel" title="Listede olmayan bir bölüm ekle">+ Yeni bölüm</button></div></div>
         <div class="tam"><label for="fKonu">Konusu <span class="yildiz">*</span></label><input id="fKonu" required maxlength="300" placeholder="ör. Yıllık yazılım bakım ve 7/24 destek"></div>
         <div><label for="fFirma">Firma</label><input id="fFirma" maxlength="150"></div>
         <div><label for="fKontak">Kontak kişi</label><input id="fKontak" maxlength="120"></div>
@@ -159,7 +162,7 @@
   const sb = window.sb; // ortak oturum istemcisi (js/auth.js)
   const TABLO = 'bakim_anlasma', DEPO = 'sozlesmeler', MAKS_DOSYA = 10 * 1024 * 1024;
   let UYARI_GUN = 30; // Ayarlar sekmesinden okunur
-  let kayitlar = [], duzenlenen = null, detaydaki = null, aktifKullanici = null;
+  let kayitlar = [], bolumler = [], duzenlenen = null, detaydaki = null, aktifKullanici = null;
 
   const $ = id => document.getElementById(id);
   const log = (o, d) => { if (window.logYaz) logYaz(o, d); };
@@ -197,23 +200,51 @@
   // ---- Listeleme ----
   async function yukle() {
     $('govde').innerHTML = '<tr><td colspan="8" class="bk-yukleniyor">Yükleniyor…</td></tr>';
-    const { data, error } = await sb.from(TABLO).select('*')
-      .order('bitis', { ascending: true, nullsFirst: false }).order('id', { ascending: false }).limit(1000);
-    if (error) {
-      $('govde').innerHTML = '<tr><td colspan="8" class="bk-bos" style="color:#f85149">Kayıtlar yüklenemedi: ' + kacis(error.message) + '</td></tr>';
+    const [r, b] = await Promise.all([
+      sb.from(TABLO).select('*').order('bitis', { ascending: true, nullsFirst: false }).order('id', { ascending: false }).limit(1000),
+      sb.from('bolum').select('id,ad').order('ad')
+    ]);
+    if (r.error) {
+      $('govde').innerHTML = '<tr><td colspan="8" class="bk-bos" style="color:#f85149">Kayıtlar yüklenemedi: ' + kacis(r.error.message) + '</td></tr>';
       return;
     }
-    kayitlar = data || [];
+    kayitlar = r.data || [];
+    bolumler = (b.data || []).sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
     bolumleriDoldur(); ozet(); ciz();
   }
 
+  const bolumAdi = id => (bolumler.find(x => x.id === id) || {}).ad || '–';
+
   function bolumleriDoldur() {
-    const bolumler = [...new Set(kayitlar.map(k => k.bolum).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));
-    const secili = $('fBolum').value;
-    $('fBolum').innerHTML = '<option value="">Tümü</option>' + bolumler.map(b => '<option>' + kacis(b) + '</option>').join('');
-    if (bolumler.includes(secili)) $('fBolum').value = secili;
-    $('bolumListe').innerHTML = bolumler.map(b => '<option value="' + kacis(b) + '">').join('');
+    const secFiltre = $('fBolum').value, secForm = $('fBolumGir').value;
+    const secenekler = bolumler.map(b => '<option value="' + b.id + '">' + kacis(b.ad) + '</option>').join('');
+    $('fBolum').innerHTML = '<option value="">Tümü</option>' + secenekler;
+    if (bolumler.some(b => String(b.id) === secFiltre)) $('fBolum').value = secFiltre;
+    $('fBolumGir').innerHTML = '<option value="">Seçin…</option>' + secenekler;
+    if (secForm) $('fBolumGir').value = secForm;
   }
+
+  // ---- Bölüm ekleme (formdan) ----
+  async function bolumEkle(ad) {
+    ad = String(ad || '').trim().slice(0, 80);
+    if (!ad) return null;
+    const mevcut = bolumler.find(b => kucult(b.ad) === kucult(ad));
+    if (mevcut) return mevcut;
+    const { data, error } = await sb.from('bolum').insert({ ad }).select('id,ad').single();
+    if (error) throw new Error(/duplicate|unique/i.test(error.message) ? '"' + ad + '" bölümü zaten var.' : error.message);
+    bolumler.push(data); bolumler.sort((x, y) => x.ad.localeCompare(y.ad, 'tr'));
+    log('Bölüm eklendi', ad);
+    return data;
+  }
+  $('yeniBolumBtn').addEventListener('click', async () => {
+    const ad = prompt('Yeni bölümün adı (ör. Ön Büro):');
+    if (!ad || !ad.trim()) return;
+    try {
+      const b = await bolumEkle(ad);
+      bolumleriDoldur();
+      $('fBolumGir').value = b.id;
+    } catch (err) { $('formHata').textContent = err.message; }
+  });
 
   function ozet() {
     const sayac = { aktif: 0, yakin: 0, dolmus: 0 };
@@ -228,10 +259,10 @@
     const kelimeler = kucult($('ara').value).split(/\s+/).filter(Boolean);
     const bolum = $('fBolum').value, dur = $('fDurum').value;
     return kayitlar.filter(k => {
-      if (bolum && k.bolum !== bolum) return false;
+      if (bolum && String(k.bolum_id) !== bolum) return false;
       if (dur && durum(k).kod !== dur) return false;
       if (!kelimeler.length) return true;
-      const metin = kucult([k.sistem, k.bolum, k.konu, k.firma, k.kontak_kisi, k.telefon, k.eposta, k.adres, k.notlar, k.dosya_adi].join(' '));
+      const metin = kucult([k.sistem, bolumAdi(k.bolum_id), k.konu, k.firma, k.kontak_kisi, k.telefon, k.eposta, k.adres, k.notlar, k.dosya_adi].join(' '));
       return kelimeler.every(w => metin.includes(w));
     });
   }
@@ -247,7 +278,7 @@
       const d = durum(k);
       return '<tr>'
         + '<td><strong>' + kacis(k.sistem) + '</strong></td>'
-        + '<td>' + kacis(k.bolum) + '</td>'
+        + '<td>' + kacis(bolumAdi(k.bolum_id)) + '</td>'
         + '<td class="konu">' + kacis(k.konu) + '</td>'
         + '<td>' + (kacis(k.firma) || '–') + (k.kontak_kisi ? '<br><span class="alt">' + kacis(k.kontak_kisi) + '</span>' : '') + '</td>'
         + '<td style="white-space:nowrap">' + tarih(k.bitis) + '</td>'
@@ -289,7 +320,7 @@
   }
 
   // ---- Ekle / Düzenle ----
-  const alanlar = { fSistem: 'sistem', fBolumGir: 'bolum', fKonu: 'konu', fFirma: 'firma', fKontak: 'kontak_kisi',
+  const alanlar = { fSistem: 'sistem', fBolumGir: 'bolum_id', fKonu: 'konu', fFirma: 'firma', fKontak: 'kontak_kisi',
     fTelefon: 'telefon', fEposta: 'eposta', fAdres: 'adres', fBaslangic: 'baslangic', fBitis: 'bitis', fNotlar: 'notlar' };
 
   function formAc(k) {
@@ -316,6 +347,7 @@
     if (!$('anlasmaForm').reportValidity()) return;
     const veri = {};
     Object.entries(alanlar).forEach(([id, alan]) => { const v = $(id).value.trim(); veri[alan] = v === '' ? null : v; });
+    veri.bolum_id = veri.bolum_id ? Number(veri.bolum_id) : null;
     if (veri.baslangic && veri.bitis && veri.bitis < veri.baslangic) { $('formHata').textContent = 'Bitiş tarihi başlangıçtan önce olamaz.'; return; }
     const dosya = $('fDosya').files[0];
     if (dosya && dosya.size > MAKS_DOSYA) { $('formHata').textContent = 'Dosya 10 MB sınırını aşıyor.'; return; }
@@ -361,7 +393,7 @@
   function detayAc(k) {
     detaydaki = k;
     const d = durum(k);
-    $('detayBaslik').textContent = k.sistem + ' — ' + k.bolum;
+    $('detayBaslik').textContent = k.sistem + ' — ' + bolumAdi(k.bolum_id);
     const satirlar = [
       ['Durum', '<span class="cip ' + d.kod + '">' + kacis(d.ad) + '</span>'],
       ['Konusu', kacis(k.konu)],
