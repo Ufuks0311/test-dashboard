@@ -190,6 +190,7 @@
       <div class="dlg-alt">
         <span class="en-hata" id="formHata"></span>
         <button type="button" class="en-btn ikincil" id="zimmetYazdirBtn" data-log="ozel">Zimmet Formu Yazdır</button>
+        <button type="button" class="en-btn ikincil" id="zimmetIptalBtn" data-log="ozel">Zimmet İptal Formu Yazdır</button>
         <button type="button" class="en-btn ikincil" id="vazgecBtn" data-log="ozel">Vazgeç</button>
         <button type="submit" class="en-btn" id="kaydetBtn" data-log="ozel">Kaydet</button>
       </div>
@@ -463,51 +464,82 @@
   $('yeniBtn').addEventListener('click', () => formAc(null));
   $('vazgecBtn').addEventListener('click', () => $('formDlg').close());
 
-  // ---- Zimmet formu yazdırma (kaydetmeden de, o anki form değerleriyle çalışır) ----
+  // ---- Zimmet formları (yazdırma altyapısı ortak, kaydetmeden de o anki form değerleriyle çalışır) ----
+  const YAZDIR_STIL = 'body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:40px}'
+    + 'h1{font-size:20px;text-align:center;margin-bottom:4px}'
+    + '.alt{text-align:center;color:#555;font-size:13px;margin-bottom:26px}'
+    + '.baslik{font-size:14px;font-weight:bold;margin:22px 0 8px;border-bottom:1px solid #333;padding-bottom:4px}'
+    + 'table{width:100%;border-collapse:collapse;font-size:13px}'
+    + 'td{padding:6px 8px;border:1px solid #ccc}'
+    + 'td.et{background:#f4f4f4;font-weight:bold;width:180px}'
+    + '.notlar{border:1px solid #ccc;padding:10px;min-height:50px;font-size:13px;white-space:pre-wrap}'
+    + '.taahhut{margin-top:26px;font-size:12.5px;line-height:1.5;color:#333}'
+    + '.imzalar{display:flex;justify-content:space-between;gap:30px;margin-top:70px}'
+    + '.imza{flex:1;text-align:center;font-size:13px}'
+    + '.imza .cizgi{border-top:1px solid #111;margin-top:55px;padding-top:6px}'
+    + '@media print{@page{margin:20mm}}';
+  const yzSatir = (etiket, deger) => '<tr><td class="et">' + etiket + '</td><td>' + kacis(deger || '–') + '</td></tr>';
+  function yazdirmaPenceresiAc(baslik, govde) {
+    const html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>' + kacis(baslik) + '</title><style>' + YAZDIR_STIL + '</style></head><body>'
+      + govde
+      + '<script>window.onload=function(){setTimeout(function(){window.print();},250);};<' + '/script>'
+      + '</body></html>';
+    const pencere = window.open('', '_blank');
+    if (!pencere) { alert('Yazdırma penceresi açılamadı; tarayıcının açılır pencere engelleyicisini kontrol edin.'); return false; }
+    pencere.document.write(html);
+    pencere.document.close();
+    return true;
+  }
+  function cihazBilgiTablosu(v) {
+    return '<div class="baslik">Cihaz Bilgileri</div><table>'
+      + yzSatir('Demirbaş No', v.demirbas_no) + yzSatir('Cihaz Türü', turAdi(Number(v.tur_id)))
+      + yzSatir('Marka / Model', (v.marka || '') + ' ' + (v.model || '')) + yzSatir('Seri No', v.seri_no)
+      + yzSatir('Hostname', v.hostname) + yzSatir('Konum', v.konum)
+      + '</table>';
+  }
+
   function zimmetFormuYazdir() {
     const v = formOku();
     if (!v.zimmetli_kisi) { alert('Zimmet formu yazdırmak için önce "Zimmetli kişi" alanını doldurun.'); return; }
-    const satir = (etiket, deger) => '<tr><td class="et">' + etiket + '</td><td>' + kacis(deger || '–') + '</td></tr>';
-    const html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Zimmet Formu — ' + kacis(v.demirbas_no || '') + '</title><style>'
-      + 'body{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;padding:40px}'
-      + 'h1{font-size:20px;text-align:center;margin-bottom:4px}'
-      + '.alt{text-align:center;color:#555;font-size:13px;margin-bottom:26px}'
-      + '.baslik{font-size:14px;font-weight:bold;margin:22px 0 8px;border-bottom:1px solid #333;padding-bottom:4px}'
-      + 'table{width:100%;border-collapse:collapse;font-size:13px}'
-      + 'td{padding:6px 8px;border:1px solid #ccc}'
-      + 'td.et{background:#f4f4f4;font-weight:bold;width:180px}'
-      + '.notlar{border:1px solid #ccc;padding:10px;min-height:50px;font-size:13px;white-space:pre-wrap}'
-      + '.taahhut{margin-top:26px;font-size:12.5px;line-height:1.5;color:#333}'
-      + '.imzalar{display:flex;justify-content:space-between;gap:30px;margin-top:70px}'
-      + '.imza{flex:1;text-align:center;font-size:13px}'
-      + '.imza .cizgi{border-top:1px solid #111;margin-top:55px;padding-top:6px}'
-      + '@media print{@page{margin:20mm}}'
-      + '</style></head><body>'
-      + '<h1>ZİMMET FORMU</h1><div class="alt">DaVinci Teknoloji — IT Envanter Sistemi · ' + new Date().toLocaleDateString('tr-TR') + '</div>'
-      + '<div class="baslik">Cihaz Bilgileri</div><table>'
-      + satir('Demirbaş No', v.demirbas_no) + satir('Cihaz Türü', turAdi(Number(v.tur_id)))
-      + satir('Marka / Model', (v.marka || '') + ' ' + (v.model || '')) + satir('Seri No', v.seri_no)
-      + satir('Hostname', v.hostname) + satir('Konum', v.konum)
-      + '</table>'
+    const govde = '<h1>ZİMMET FORMU</h1><div class="alt">DaVinci Teknoloji — IT Envanter Sistemi · ' + new Date().toLocaleDateString('tr-TR') + '</div>'
+      + cihazBilgiTablosu(v)
       + '<div class="baslik">Zimmet Bilgileri</div><table>'
-      + satir('Zimmetli Kişi', v.zimmetli_kisi) + satir('Sicil No', v.sicil_no)
-      + satir('Bölümü', bolumAdi(Number(v.zimmet_bolum_id))) + satir('Görevi', v.zimmet_gorev)
-      + satir('Zimmet Tarihi', v.zimmet_tarihi ? tarih(v.zimmet_tarihi) : '–')
+      + yzSatir('Zimmetli Kişi', v.zimmetli_kisi) + yzSatir('Sicil No', v.sicil_no)
+      + yzSatir('Bölümü', bolumAdi(Number(v.zimmet_bolum_id))) + yzSatir('Görevi', v.zimmet_gorev)
+      + yzSatir('Zimmet Tarihi', v.zimmet_tarihi ? tarih(v.zimmet_tarihi) : '–')
       + '</table>'
       + '<div class="baslik">Notlar</div><div class="notlar">' + kacis(v.notlar || '') + '</div>'
       + '<p class="taahhut">Yukarıda belirtilen cihaz, iş amacıyla kullanılmak üzere ilgili personele zimmetlenmiştir. '
       + 'Zimmetli personel, cihazı iş ilişkisinin sona ermesi veya kurum tarafından talep edilmesi halinde eksiksiz ve çalışır durumda iade edeceğini kabul eder.</p>'
       + '<div class="imzalar"><div class="imza"><div class="cizgi">Teslim Eden<br>Ad Soyad / İmza / Tarih</div></div>'
-      + '<div class="imza"><div class="cizgi">Teslim Alan<br>Ad Soyad / İmza / Tarih</div></div></div>'
-      + '<script>window.onload=function(){setTimeout(function(){window.print();},250);};<' + '/script>'
-      + '</body></html>';
-    const pencere = window.open('', '_blank');
-    if (!pencere) { alert('Yazdırma penceresi açılamadı; tarayıcının açılır pencere engelleyicisini kontrol edin.'); return; }
-    pencere.document.write(html);
-    pencere.document.close();
-    log('Zimmet formu yazdırıldı', (v.demirbas_no || '') + ' — ' + v.zimmetli_kisi);
+      + '<div class="imza"><div class="cizgi">Teslim Alan<br>Ad Soyad / İmza / Tarih</div></div></div>';
+    if (yazdirmaPenceresiAc('Zimmet Formu — ' + (v.demirbas_no || ''), govde)) {
+      log('Zimmet formu yazdırıldı', (v.demirbas_no || '') + ' — ' + v.zimmetli_kisi);
+    }
   }
   $('zimmetYazdirBtn').addEventListener('click', zimmetFormuYazdir);
+
+  function zimmetIptalFormuYazdir() {
+    const v = formOku();
+    if (!v.zimmetli_kisi) { alert('Zimmet iptal formu yazdırmak için önce iptal edilecek "Zimmetli kişi" bilgisini girin.'); return; }
+    const bugun = new Date().toLocaleDateString('tr-TR');
+    const govde = '<h1>ZİMMET İPTAL FORMU</h1><div class="alt">DaVinci Teknoloji — IT Envanter Sistemi · ' + bugun + '</div>'
+      + cihazBilgiTablosu(v)
+      + '<div class="baslik">İptal Edilen Zimmet Bilgileri</div><table>'
+      + yzSatir('Zimmetli Kişi', v.zimmetli_kisi) + yzSatir('Sicil No', v.sicil_no)
+      + yzSatir('Bölümü', bolumAdi(Number(v.zimmet_bolum_id))) + yzSatir('Görevi', v.zimmet_gorev)
+      + yzSatir('Zimmet Tarihi', v.zimmet_tarihi ? tarih(v.zimmet_tarihi) : '–') + yzSatir('İptal Tarihi', bugun)
+      + '</table>'
+      + '<div class="baslik">Cihazın Teslim Alınan Durumu</div><div class="notlar"></div>'
+      + '<p class="taahhut">Yukarıda belirtilen cihazın, adı geçen personel üzerindeki zimmeti bu tarih itibarıyla sona erdirilmiştir. '
+      + 'Cihaz, yukarıda belirtilen personel tarafından eksiksiz olarak teslim edilmiş ve ilgili IT yetkilisi tarafından teslim alınmıştır.</p>'
+      + '<div class="imzalar"><div class="imza"><div class="cizgi">Teslim Eden (Zimmetli Personel)<br>Ad Soyad / İmza / Tarih</div></div>'
+      + '<div class="imza"><div class="cizgi">Teslim Alan (IT Yetkilisi)<br>Ad Soyad / İmza / Tarih</div></div></div>';
+    if (yazdirmaPenceresiAc('Zimmet İptal Formu — ' + (v.demirbas_no || ''), govde)) {
+      log('Zimmet iptal formu yazdırıldı', (v.demirbas_no || '') + ' — ' + v.zimmetli_kisi);
+    }
+  }
+  $('zimmetIptalBtn').addEventListener('click', zimmetIptalFormuYazdir);
 
   // Form değerlerini doğrula ve veritabanı biçimine çevir
   function formDogrula() {
