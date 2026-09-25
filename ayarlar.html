@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ayarlar — IT Panosu</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth.js"></script>
+  <style>
+    .ay-izgara { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:1.25rem; align-items:start; }
+    .ay-kart { background:var(--kart); border-radius:14px; padding:1.4rem; }
+    .ay-kart h2 { font-size:1rem; margin-bottom:.3rem; }
+    .ay-kart .aciklama { color:#8b949e; font-size:.83rem; margin-bottom:1rem; line-height:1.45; }
+    .ay-alan { display:flex; flex-direction:column; gap:.35rem; margin-bottom:1rem; }
+    .ay-alan:last-child { margin-bottom:0; }
+    .ay-alan label, .ay-etiket { font-size:.78rem; color:#8b949e; }
+    .ay-alan .ipucu { font-size:.75rem; color:#6e7681; }
+    .ay-kart input[type=text], .ay-kart input[type=email], .ay-kart input[type=number], .ay-kart select {
+      background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:8px;
+      padding:.55rem .7rem; font-size:.9rem; font-family:inherit; width:100%; }
+    .ay-kart input:focus, .ay-kart select:focus { outline:none; border-color:var(--vurgu); }
+    .ay-kart input.hatali { border-color:#f85149; }
+    .ay-satir { display:flex; gap:.5rem; }
+    .ay-satir input { flex:1; }
+    .ay-btn { background:var(--vurgu); color:#04121f; border:none; border-radius:8px; padding:.6rem 1rem; font-size:.9rem; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .ay-btn.ikincil { background:transparent; color:var(--metin); border:1px solid rgba(255,255,255,.2); font-weight:500; }
+    .ay-btn:hover { opacity:.88; }
+    .ay-btn:disabled { opacity:.4; cursor:default; }
+    .ay-liste { list-style:none; display:flex; flex-direction:column; gap:.4rem; margin-bottom:.75rem; }
+    .ay-liste li { display:flex; justify-content:space-between; align-items:center; gap:.5rem; background:var(--bg); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:.45rem .5rem .45rem .75rem; font-size:.9rem; word-break:break-all; }
+    .ay-liste button { background:transparent; border:none; color:#8b949e; font-size:1.1rem; line-height:1; cursor:pointer; padding:.1rem .4rem; border-radius:6px; }
+    .ay-liste button:hover { color:#f85149; background:rgba(248,81,73,.1); }
+    .ay-anahtar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+    .ay-anahtar span { font-size:.9rem; }
+    .ay-anahtar input { width:2.6rem; height:1.4rem; accent-color:var(--vurgu); cursor:pointer; }
+    .ay-not { font-size:.78rem; color:#e3b341; background:rgba(227,179,65,.08); border:1px solid rgba(227,179,65,.25); border-radius:8px; padding:.55rem .7rem; line-height:1.45; }
+    .ay-kaydet { position:sticky; bottom:0; margin-top:1.25rem; background:var(--kart); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:.9rem 1.1rem; display:flex; align-items:center; gap:1rem; flex-wrap:wrap; box-shadow:0 -6px 24px rgba(0,0,0,.25); }
+    .ay-kaydet .durum { margin-right:auto; font-size:.85rem; color:#8b949e; }
+    .ay-kaydet .durum.degisti { color:#e3b341; }
+    .ay-kaydet .durum.basarili { color:#3ecf7a; }
+    .ay-kaydet .durum.hata { color:#f85149; }
+    .ay-sonuc { font-size:.85rem; margin-top:.75rem; line-height:1.45; min-height:1.2em; }
+    .ay-sonuc.ok { color:#3ecf7a; } .ay-sonuc.hata { color:#f85149; } .ay-sonuc.bekle { color:#8b949e; }
+    .ay-tablo { width:100%; border-collapse:collapse; font-size:.83rem; }
+    .ay-tablo th, .ay-tablo td { text-align:left; padding:.45rem .5rem; border-bottom:1px solid rgba(255,255,255,.06); }
+    .ay-tablo th { color:#8b949e; font-weight:600; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
+    .ay-bos { color:#8b949e; font-size:.85rem; padding:.5rem 0; }
+    .ok-renk { color:#3ecf7a; } .hata-renk { color:#f85149; }
+    .ay-alt-baslik { font-size:.85rem; font-weight:600; margin:1.25rem 0 .5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo" title="DaVinci Teknoloji"></span>
+    <h1>Ayarlar</h1>
+    <nav>
+      <a href="index.html">Genel Bakış</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html">Bakım Anlaşmaları</a> <a href="ayarlar.html" class="active">Ayarlar</a>
+    </nav>
+    <span id="saat" class="saat"></span>
+  </header>
+  <main>
+    <p class="ay-bos" id="yukleniyor">Ayarlar yükleniyor…</p>
+    <div id="icerik" hidden>
+      <div class="ay-izgara">
+        <!-- Bildirim e-postaları -->
+        <section class="ay-kart">
+          <h2>Bildirim E-postaları</h2>
+          <p class="aciklama">Bakım anlaşması hatırlatmaları bu adreslere gönderilir (en fazla 10 adres).</p>
+          <ul class="ay-liste" id="aliciListe"></ul>
+          <div class="ay-satir">
+            <input id="yeniAlici" type="email" placeholder="ornek@davinci.com.tr" maxlength="150" aria-label="Yeni alıcı e-posta adresi">
+            <button class="ay-btn ikincil" id="aliciEkle" data-log="ozel">Ekle</button>
+          </div>
+          <p class="ay-sonuc hata" id="aliciHata"></p>
+          <p class="ay-not">Resend'de alan adı (ör. davinci.com.tr) doğrulanana kadar e-postalar yalnızca Resend hesabını açtığın adrese ulaşır. Diğer adresler için gönderim reddedilir; nedenini aşağıdaki test sonucunda görebilirsin.</p>
+        </section>
+
+        <!-- Hatırlatma zamanlaması -->
+        <section class="ay-kart">
+          <h2>Hatırlatma Zamanlaması</h2>
+          <p class="aciklama">Her gün seçilen saatte, bitişine eşik gün kalan anlaşmalar tek bir özet e-postada bildirilir. Her anlaşma her eşik için yalnızca bir kez hatırlatılır.</p>
+          <label class="ay-anahtar"><span>Hatırlatmalar açık</span><input type="checkbox" id="aktif" data-log="ozel"></label>
+          <div class="ay-alan">
+            <label for="esikler">Eşik günleri</label>
+            <input id="esikler" type="text" placeholder="30, 7, 1, 0">
+            <span class="ipucu">Virgülle ayır. 0 = bitiş günü. En fazla 6 değer, 0–365 arası.</span>
+          </div>
+          <div class="ay-alan">
+            <label for="saatSec">Günlük gönderim saati (İstanbul)</label>
+            <select id="saatSec"></select>
+          </div>
+        </section>
+
+        <!-- Pano ayarları -->
+        <section class="ay-kart">
+          <h2>Pano Ayarları</h2>
+          <p class="aciklama">Tüm kullanıcılar için geçerlidir.</p>
+          <div class="ay-alan">
+            <label for="oturum">Otomatik çıkış süresi (dakika)</label>
+            <input id="oturum" type="number" min="2" max="120" step="1">
+            <span class="ipucu">Bu süre boyunca hiç işlem yapılmazsa oturum kapanır. 2–120 dakika.</span>
+          </div>
+          <div class="ay-alan">
+            <label for="uyariGun">Bakım anlaşması "yaklaşıyor" uyarısı (gün)</label>
+            <input id="uyariGun" type="number" min="1" max="365" step="1">
+            <span class="ipucu">Bakım Anlaşmaları'nda bitişe bu kadar gün kala sarı uyarı gösterilir.</span>
+          </div>
+        </section>
+
+        <!-- Test ve durum -->
+        <section class="ay-kart">
+          <h2>Test ve Durum</h2>
+          <p class="aciklama">Kayıtlı ayarlarla deneme e-postası gönderir. Test, gerçek hatırlatma geçmişini etkilemez.</p>
+          <button class="ay-btn" id="testBtn" data-log="ozel">Test e-postası gönder</button>
+          <p class="ay-sonuc" id="testSonuc"></p>
+
+          <p class="ay-alt-baslik">Otomatik zamanlayıcı</p>
+          <p class="ay-bos" id="zamanlayici">–</p>
+          <table class="ay-tablo" id="calismaTablo" hidden>
+            <thead><tr><th>Çalışma zamanı</th><th>Sonuç</th></tr></thead><tbody></tbody>
+          </table>
+
+          <p class="ay-alt-baslik">Son gönderilen hatırlatmalar</p>
+          <table class="ay-tablo" id="gecmisTablo" hidden>
+            <thead><tr><th>Gönderim</th><th>Anlaşma</th><th>Eşik</th><th>Bitiş</th></tr></thead><tbody></tbody>
+          </table>
+          <p class="ay-bos" id="gecmisBos">Henüz gerçek hatırlatma gönderilmedi.</p>
+        </section>
+      </div>
+
+      <div class="ay-kaydet">
+        <span class="durum" id="kaydetDurum"></span>
+        <button class="ay-btn ikincil" id="vazgecBtn" data-log="ozel" disabled>Değişiklikleri geri al</button>
+        <button class="ay-btn" id="kaydetBtn" data-log="ozel" disabled>Kaydet</button>
+      </div>
+    </div>
+  </main>
+  <script src="js/log.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+  const sb = window.sb; // ortak oturum istemcisi (js/auth.js)
+  const $ = id => document.getElementById(id);
+  const log = (o, d) => { if (window.logYaz) logYaz(o, d); };
+  const EPOSTA_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+  const tarihSaat = t => t ? new Date(t).toLocaleString('tr-TR') : '–';
+  const tarih = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('tr-TR') : '–';
+  function kacis(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  let kayitli = null;   // veritabanındaki son hal: { h: hatirlatma_ayar, s: sistem_ayar }
+  let alicilar = [];    // ekrandaki alıcı listesi
+
+  // Saat seçenekleri
+  $('saatSec').innerHTML = Array.from({ length: 24 }, (_, i) => '<option value="' + i + '">' + String(i).padStart(2, '0') + ':00</option>').join('');
+
+  // ---- Yükleme ----
+  async function yukle() {
+    const [h, s] = await Promise.all([
+      sb.from('hatirlatma_ayar').select('*').eq('id', 1).maybeSingle(),
+      sb.from('sistem_ayar').select('*').eq('id', 1).maybeSingle()
+    ]);
+    if (h.error || s.error || !h.data || !s.data) {
+      $('yukleniyor').textContent = 'Ayarlar yüklenemedi: ' + ((h.error || s.error || {}).message || 'ayar kaydı bulunamadı');
+      $('yukleniyor').className = 'ay-sonuc hata';
+      return;
+    }
+    kayitli = { h: h.data, s: s.data };
+    formaDoldur();
+    $('yukleniyor').hidden = true;
+    $('icerik').hidden = false;
+    durumYukle();
+  }
+
+  function formaDoldur() {
+    alicilar = [...kayitli.h.alicilar];
+    aliciCiz();
+    $('aktif').checked = kayitli.h.aktif;
+    $('esikler').value = kayitli.h.esikler.join(', ');
+    $('saatSec').value = kayitli.s.hatirlatma_saati;
+    $('oturum').value = kayitli.s.oturum_suresi_dk;
+    $('uyariGun').value = kayitli.s.bakim_uyari_gun;
+    $('aliciHata').textContent = '';
+    degisiklikKontrol();
+  }
+
+  function sonGuncellemeMetni() {
+    const adaylar = [kayitli.h, kayitli.s].filter(x => x.updated_at).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    if (!adaylar.length) return '';
+    const x = adaylar[0];
+    return 'Son güncelleme: ' + tarihSaat(x.updated_at) + (x.guncelleyen ? ' · ' + x.guncelleyen : '');
+  }
+
+  // ---- Alıcılar ----
+  function aliciCiz() {
+    $('aliciListe').innerHTML = alicilar.length
+      ? alicilar.map((e, i) => '<li><span>' + kacis(e) + '</span><button type="button" data-i="' + i + '" aria-label="Alıcıyı kaldır: ' + kacis(e) + '" title="Kaldır">×</button></li>').join('')
+      : '<li style="color:#f85149">En az bir alıcı gerekli.</li>';
+    $('aliciEkle').disabled = alicilar.length >= 10;
+  }
+  function aliciEkle() {
+    const e = $('yeniAlici').value.trim().toLowerCase();
+    $('aliciHata').textContent = '';
+    if (!e) return;
+    if (!EPOSTA_RE.test(e)) { $('aliciHata').textContent = 'Geçerli bir e-posta adresi girin.'; $('yeniAlici').classList.add('hatali'); return; }
+    if (alicilar.includes(e)) { $('aliciHata').textContent = 'Bu adres zaten listede.'; return; }
+    if (alicilar.length >= 10) { $('aliciHata').textContent = 'En fazla 10 alıcı eklenebilir.'; return; }
+    alicilar.push(e);
+    $('yeniAlici').value = ''; $('yeniAlici').classList.remove('hatali');
+    aliciCiz(); degisiklikKontrol();
+  }
+  $('aliciEkle').addEventListener('click', aliciEkle);
+  $('yeniAlici').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aliciEkle(); } });
+  $('yeniAlici').addEventListener('input', () => { $('yeniAlici').classList.remove('hatali'); $('aliciHata').textContent = ''; });
+  $('aliciListe').addEventListener('click', e => {
+    const b = e.target.closest('button[data-i]');
+    if (!b) return;
+    alicilar.splice(Number(b.dataset.i), 1);
+    aliciCiz(); degisiklikKontrol();
+  });
+
+  // ---- Form değerleri ve doğrulama ----
+  function esikleriOku() {
+    const parcalar = $('esikler').value.split(/[,;\s]+/).filter(Boolean);
+    const sayilar = parcalar.map(Number);
+    if (!parcalar.length) return { hata: 'En az bir eşik günü girin.' };
+    if (sayilar.some(n => !Number.isInteger(n) || n < 0 || n > 365)) return { hata: 'Eşik günleri 0–365 arası tam sayı olmalı.' };
+    const tekil = [...new Set(sayilar)].sort((a, b) => b - a);
+    if (tekil.length > 6) return { hata: 'En fazla 6 eşik günü girilebilir.' };
+    return { deger: tekil };
+  }
+  function formDegerleri() {
+    const esik = esikleriOku();
+    const oturum = parseInt($('oturum').value, 10), uyari = parseInt($('uyariGun').value, 10);
+    const hatalar = [];
+    if (!alicilar.length) hatalar.push('En az bir alıcı e-postası gerekli.');
+    if (esik.hata) hatalar.push(esik.hata);
+    if (!(oturum >= 2 && oturum <= 120)) hatalar.push('Otomatik çıkış süresi 2–120 dakika olmalı.');
+    if (!(uyari >= 1 && uyari <= 365)) hatalar.push('Uyarı günü 1–365 arası olmalı.');
+    $('esikler').classList.toggle('hatali', !!esik.hata);
+    $('oturum').classList.toggle('hatali', !(oturum >= 2 && oturum <= 120));
+    $('uyariGun').classList.toggle('hatali', !(uyari >= 1 && uyari <= 365));
+    return {
+      hatalar,
+      h: { alicilar: [...alicilar], aktif: $('aktif').checked, esikler: esik.deger || kayitli.h.esikler },
+      s: { hatirlatma_saati: parseInt($('saatSec').value, 10), oturum_suresi_dk: oturum, bakim_uyari_gun: uyari }
+    };
+  }
+
+  const ESIT = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function farklar(f) {
+    const d = [];
+    if (!ESIT(f.h.alicilar, kayitli.h.alicilar)) d.push('Alıcılar: ' + kayitli.h.alicilar.join(', ') + ' → ' + f.h.alicilar.join(', '));
+    if (f.h.aktif !== kayitli.h.aktif) d.push('Hatırlatmalar: ' + (f.h.aktif ? 'açık' : 'kapalı'));
+    if (!ESIT(f.h.esikler, kayitli.h.esikler)) d.push('Eşikler: ' + kayitli.h.esikler.join(',') + ' → ' + f.h.esikler.join(','));
+    if (f.s.hatirlatma_saati !== kayitli.s.hatirlatma_saati) d.push('Gönderim saati: ' + kayitli.s.hatirlatma_saati + ':00 → ' + f.s.hatirlatma_saati + ':00');
+    if (f.s.oturum_suresi_dk !== kayitli.s.oturum_suresi_dk) d.push('Otomatik çıkış: ' + kayitli.s.oturum_suresi_dk + ' → ' + f.s.oturum_suresi_dk + ' dk');
+    if (f.s.bakim_uyari_gun !== kayitli.s.bakim_uyari_gun) d.push('Uyarı günü: ' + kayitli.s.bakim_uyari_gun + ' → ' + f.s.bakim_uyari_gun);
+    return d;
+  }
+
+  function degisiklikKontrol() {
+    if (!kayitli) return;
+    const f = formDegerleri();
+    const d = farklar(f);
+    const durum = $('kaydetDurum');
+    if (f.hatalar.length) { durum.textContent = f.hatalar[0]; durum.className = 'durum hata'; }
+    else if (d.length) { durum.textContent = d.length + ' kaydedilmemiş değişiklik'; durum.className = 'durum degisti'; }
+    else { durum.textContent = sonGuncellemeMetni() || 'Tüm ayarlar kayıtlı'; durum.className = 'durum'; }
+    $('kaydetBtn').disabled = !d.length || !!f.hatalar.length;
+    $('vazgecBtn').disabled = !d.length;
+    $('testBtn').disabled = !!d.length; // test, kayıtlı ayarlarla çalışır
+    $('testBtn').title = d.length ? 'Önce değişiklikleri kaydedin' : '';
+  }
+  ['aktif', 'esikler', 'saatSec', 'oturum', 'uyariGun'].forEach(id => {
+    $(id).addEventListener('input', degisiklikKontrol);
+    $(id).addEventListener('change', degisiklikKontrol);
+  });
+
+  // ---- Kaydet / Geri al ----
+  function veritabaniHatasi(err) {
+    const m = (err && err.message) || String(err);
+    if (/alicilar_gecerli/.test(m)) return 'Alıcı listesi geçersiz (1–10 geçerli e-posta olmalı).';
+    if (/esikler_gecerli/.test(m)) return 'Eşik günleri geçersiz.';
+    if (/check constraint/.test(m)) return 'Girilen değerlerden biri izin verilen aralığın dışında.';
+    return m;
+  }
+
+  $('kaydetBtn').addEventListener('click', async () => {
+    const f = formDegerleri();
+    if (f.hatalar.length) return;
+    const d = farklar(f);
+    if (!d.length) return;
+    $('kaydetBtn').disabled = true; $('kaydetBtn').textContent = 'Kaydediliyor…';
+    try {
+      const hDegisti = !ESIT(f.h, { alicilar: kayitli.h.alicilar, aktif: kayitli.h.aktif, esikler: kayitli.h.esikler });
+      const sDegisti = !ESIT(f.s, { hatirlatma_saati: kayitli.s.hatirlatma_saati, oturum_suresi_dk: kayitli.s.oturum_suresi_dk, bakim_uyari_gun: kayitli.s.bakim_uyari_gun });
+      if (hDegisti) {
+        const r = await sb.from('hatirlatma_ayar').update(f.h).eq('id', 1).select().single();
+        if (r.error) throw r.error;
+        kayitli.h = r.data;
+      }
+      if (sDegisti) {
+        const r = await sb.from('sistem_ayar').update(f.s).eq('id', 1).select().single();
+        if (r.error) throw r.error;
+        kayitli.s = r.data;
+        if (window.oturumSuresiAyarla) window.oturumSuresiAyarla(kayitli.s.oturum_suresi_dk); // bu oturumda hemen uygula
+      }
+      log('Ayarlar kaydedildi', d.join(' | '));
+      formaDoldur();
+      $('kaydetDurum').textContent = 'Kaydedildi. ' + sonGuncellemeMetni();
+      $('kaydetDurum').className = 'durum basarili';
+      if (sDegisti) durumYukle(); // zamanlayıcı saati değişmiş olabilir
+    } catch (err) {
+      $('kaydetDurum').textContent = 'Kaydedilemedi: ' + veritabaniHatasi(err);
+      $('kaydetDurum').className = 'durum hata';
+    } finally {
+      $('kaydetBtn').textContent = 'Kaydet';
+      if (!farklar(formDegerleri()).length) $('kaydetBtn').disabled = true; else $('kaydetBtn').disabled = false;
+    }
+  });
+  $('vazgecBtn').addEventListener('click', () => formaDoldur());
+
+  // Kaydedilmemiş değişiklik varken sayfadan çıkılırsa uyar
+  window.addEventListener('beforeunload', e => {
+    if (kayitli && farklar(formDegerleri()).length) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // ---- Test e-postası ----
+  const bekle = ms => new Promise(r => setTimeout(r, ms));
+  function resendCevabi(ham) {
+    try { const j = JSON.parse(ham); return j.message || j.error || ham; } catch (e) { return ham; }
+  }
+  $('testBtn').addEventListener('click', async () => {
+    const sonuc = $('testSonuc');
+    $('testBtn').disabled = true;
+    sonuc.className = 'ay-sonuc bekle'; sonuc.textContent = 'Gönderiliyor…';
+    const { data, error } = await sb.rpc('hatirlatma_test_gonder');
+    if (error) {
+      sonuc.className = 'ay-sonuc hata'; sonuc.textContent = error.message;
+      $('testBtn').disabled = false; return;
+    }
+    log('Test e-postası gönderildi', data.mesaj);
+    sonuc.textContent = 'İstek gönderildi, Resend yanıtı bekleniyor…';
+    let durum = null;
+    for (let i = 0; i < 8 && !durum; i++) {
+      await bekle(1500);
+      const r = await sb.rpc('hatirlatma_istek_durumu', { istek: data.istek });
+      if (!r.error && r.data) durum = r.data;
+    }
+    if (!durum) { sonuc.className = 'ay-sonuc bekle'; sonuc.textContent = 'Yanıt henüz gelmedi; birkaç saniye sonra gelen kutunu kontrol et.'; }
+    else if (durum.durum >= 200 && durum.durum < 300) {
+      sonuc.className = 'ay-sonuc ok';
+      sonuc.textContent = 'Resend e-postayı kabul etti (' + kayitli.h.alicilar.join(', ') + '). Gelen kutunu kontrol et; ilk seferde gereksiz klasörüne düşebilir.';
+    } else {
+      sonuc.className = 'ay-sonuc hata';
+      sonuc.textContent = 'Resend gönderimi reddetti' + (durum.durum ? ' (HTTP ' + durum.durum + ')' : '') + ': ' + resendCevabi(durum.cevap || 'bilinmeyen hata');
+    }
+    setTimeout(() => { $('testBtn').disabled = false; degisiklikKontrol(); }, 3000);
+  });
+
+  // ---- Zamanlayıcı ve gönderim geçmişi ----
+  function cronSaati(ifade) {
+    const p = (ifade || '').split(' ');
+    const utc = parseInt(p[1], 10);
+    return Number.isInteger(utc) ? String((utc + 3) % 24).padStart(2, '0') + ':' + String(parseInt(p[0], 10) || 0).padStart(2, '0') : ifade;
+  }
+  async function durumYukle() {
+    const z = await sb.rpc('hatirlatma_zamanlayici_durumu');
+    if (z.error || !z.data) { $('zamanlayici').textContent = 'Zamanlayıcı bilgisi alınamadı.'; }
+    else if (!z.data.zamanlama) { $('zamanlayici').innerHTML = '<span class="hata-renk">Zamanlayıcı kurulu değil.</span>'; }
+    else {
+      $('zamanlayici').innerHTML = 'Her gün <b>' + kacis(cronSaati(z.data.zamanlama)) + '</b> (İstanbul) · '
+        + (z.data.aktif ? '<span class="ok-renk">çalışıyor</span>' : '<span class="hata-renk">durdurulmuş</span>');
+      const c = z.data.calismalar || [];
+      $('calismaTablo').hidden = !c.length;
+      $('calismaTablo').querySelector('tbody').innerHTML = c.map(x =>
+        '<tr><td>' + tarihSaat(x.start_time) + '</td><td class="' + (x.status === 'succeeded' ? 'ok-renk' : 'hata-renk') + '">'
+        + (x.status === 'succeeded' ? 'Başarılı' : kacis(x.status + (x.mesaj ? ': ' + x.mesaj : ''))) + '</td></tr>').join('');
+    }
+    const g = await sb.from('hatirlatma_gecmis').select('gonderim,esik,bitis,bakim_anlasma(sistem,bolum)')
+      .order('gonderim', { ascending: false }).limit(15);
+    const satirlar = (g.data || []);
+    $('gecmisTablo').hidden = !satirlar.length;
+    $('gecmisBos').hidden = !!satirlar.length;
+    $('gecmisTablo').querySelector('tbody').innerHTML = satirlar.map(x =>
+      '<tr><td>' + tarihSaat(x.gonderim) + '</td><td>' + kacis(x.bakim_anlasma ? x.bakim_anlasma.sistem + ' / ' + x.bakim_anlasma.bolum : '(silinmiş)') + '</td>'
+      + '<td>' + (x.esik === 0 ? 'bitiş günü' : x.esik + ' gün') + '</td><td>' + tarih(x.bitis) + '</td></tr>').join('');
+  }
+
+  window.oturumHazir.then(yukle);
+  </script>
+</body>
+</html>

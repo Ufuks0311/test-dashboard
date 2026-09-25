@@ -3,7 +3,7 @@
 (function () {
   const SB_URL = 'https://ayxjajcymhqslanqkpqd.supabase.co';
   const SB_KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
-  const BOSTA_SURE = 5 * 60 * 1000;   // 5 dakika işlem yapılmazsa çıkış
+  let BOSTA_SURE = (parseInt(localStorage.getItem('panoBostaSureDk') || '5', 10) || 5) * 60 * 1000; // Ayarlar sekmesinden okunur
   const UYARI_SURE = 60 * 1000;       // son 1 dakikada geri sayım uyarısı
   const ETKINLIK_ANAHTAR = 'panoSonEtkinlik'; // sekmeler arası paylaşılan son etkinlik zamanı
 
@@ -45,13 +45,21 @@
     if (window.logYaz) {
       try {
         await window.logYaz(neden === 'zamanasimi' ? 'Oturum zaman aşımı' : 'Çıkış yapıldı',
-          neden === 'zamanasimi' ? '5 dakika işlem yapılmadı' : null);
+          neden === 'zamanasimi' ? Math.round(BOSTA_SURE / 60000) + ' dakika işlem yapılmadı' : null);
       } catch (e) {}
     }
     try { await sb.auth.signOut(); } catch (e) {}
     location.replace(girisAdresi(neden));
   }
   window.cikisYap = cikisYap;
+
+  // Otomatik çıkış süresini güncelle (Ayarlar sekmesi ve oturum açılışı kullanır)
+  window.oturumSuresiAyarla = function (dk) {
+    dk = parseInt(dk, 10);
+    if (!(dk >= 2 && dk <= 120)) return;
+    BOSTA_SURE = dk * 60 * 1000;
+    try { localStorage.setItem('panoBostaSureDk', String(dk)); } catch (e) {}
+  };
 
   sb.auth.onAuthStateChange((olay, oturum) => {
     if (cikiliyor) return;
@@ -67,6 +75,11 @@
     document.documentElement.classList.remove('kilitli');
     hazirCoz(oturum);
     domHazirsa(arayuzKur);
+    // Güncel otomatik çıkış süresini veritabanından al (dinleyici içinde beklememek için ertele)
+    setTimeout(() => {
+      sb.from('sistem_ayar').select('oturum_suresi_dk').eq('id', 1).maybeSingle()
+        .then(({ data }) => { if (data) window.oturumSuresiAyarla(data.oturum_suresi_dk); });
+    }, 0);
   });
 
   function arayuzKur() {

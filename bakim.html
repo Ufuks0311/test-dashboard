@@ -69,7 +69,7 @@
     <h1>Bakım Anlaşmaları</h1>
     <nav>
       <a href="index.html">Genel Bakış</a>
-      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html" class="active">Bakım Anlaşmaları</a>
+      <a href="sunucular.html">Sunucular</a> <a href="subnet.html">Subnet Hesaplama</a> <a href="kayitlar.html">Kayıtlar</a> <a href="bakim.html" class="active">Bakım Anlaşmaları</a> <a href="ayarlar.html">Ayarlar</a>
     </nav>
     <span id="saat" class="saat"></span>
   </header>
@@ -79,7 +79,7 @@
       <section class="bk-kart-grid">
         <div class="kart"><h2>Toplam Anlaşma</h2><p class="deger" id="stToplam">–</p></div>
         <div class="kart"><h2>Aktif</h2><p class="deger" id="stAktif">–</p></div>
-        <div class="kart"><h2>30 Gün İçinde Bitecek</h2><p class="deger" id="stYakin" style="color:#e3b341">–</p></div>
+        <div class="kart"><h2 id="stYakinBaslik">30 Gün İçinde Bitecek</h2><p class="deger" id="stYakin" style="color:#e3b341">–</p></div>
         <div class="kart"><h2>Süresi Dolmuş</h2><p class="deger" id="stDolmus" style="color:#f85149">–</p></div>
       </section>
 
@@ -90,7 +90,7 @@
           <select id="fDurum">
             <option value="">Tümü</option>
             <option value="aktif">Aktif</option>
-            <option value="yakin">Yaklaşan (30 gün)</option>
+            <option value="yakin" id="optYakin">Yaklaşan (30 gün)</option>
             <option value="dolmus">Süresi dolmuş</option>
             <option value="suresiz">Süresiz</option>
           </select></div>
@@ -157,7 +157,8 @@
   const SB_URL = 'https://ayxjajcymhqslanqkpqd.supabase.co';
   const SB_KEY = 'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr'; // herkese açık (publishable) anahtar
   const sb = window.sb; // ortak oturum istemcisi (js/auth.js)
-  const TABLO = 'bakim_anlasma', DEPO = 'sozlesmeler', UYARI_GUN = 30, MAKS_DOSYA = 10 * 1024 * 1024;
+  const TABLO = 'bakim_anlasma', DEPO = 'sozlesmeler', MAKS_DOSYA = 10 * 1024 * 1024;
+  let UYARI_GUN = 30; // Ayarlar sekmesinden okunur
   let kayitlar = [], duzenlenen = null, detaydaki = null, aktifKullanici = null;
 
   const $ = id => document.getElementById(id);
@@ -183,7 +184,15 @@
   }
 
   // ---- Oturum: ortak giriş (js/auth.js) — ayrıca giriş istenmez ----
-  window.oturumHazir.then(oturum => { aktifKullanici = oturum.user; $('uygulama').hidden = false; yukle(); });
+  window.oturumHazir.then(async oturum => {
+    aktifKullanici = oturum.user;
+    const { data } = await sb.from('sistem_ayar').select('bakim_uyari_gun').eq('id', 1).maybeSingle();
+    if (data && data.bakim_uyari_gun) UYARI_GUN = data.bakim_uyari_gun;
+    $('stYakinBaslik').textContent = UYARI_GUN + ' Gün İçinde Bitecek';
+    $('optYakin').textContent = 'Yaklaşan (' + UYARI_GUN + ' gün)';
+    $('uygulama').hidden = false;
+    yukle();
+  });
 
   // ---- Listeleme ----
   async function yukle() {

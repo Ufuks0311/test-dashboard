@@ -55,16 +55,16 @@
     'https://ayxjajcymhqslanqkpqd.supabase.co',
     'sb_publishable_ZAzI-b38n2eGkgY97LnFOQ_dhe4XUrr' // herkese açık (publishable) anahtar
   );
-  const BOSTA_SURE = 5 * 60 * 1000, ETKINLIK_ANAHTAR = 'panoSonEtkinlik';
+  const BOSTA_SURE = (parseInt(localStorage.getItem('panoBostaSureDk') || '5', 10) || 5) * 60 * 1000, ETKINLIK_ANAHTAR = 'panoSonEtkinlik';
   // Girişten sonra gidilecek sayfa: sadece panonun kendi sayfalarına izin ver (dış siteye yönlendirme açığı olmasın)
-  const IZINLI_HEDEFLER = ['index.html', 'sunucular.html', 'subnet.html', 'kayitlar.html', 'bakim.html'];
+  const IZINLI_HEDEFLER = ['index.html', 'sunucular.html', 'subnet.html', 'kayitlar.html', 'bakim.html', 'ayarlar.html'];
   const parametreler = new URLSearchParams(location.search);
   const istenen = parametreler.get('next');
   const hedef = IZINLI_HEDEFLER.includes(istenen) ? istenen : 'index.html';
   const $ = id => document.getElementById(id);
 
   const NEDENLER = {
-    zamanasimi: '5 dakika işlem yapılmadığı için oturumunuz güvenlik amacıyla kapatıldı. Lütfen tekrar giriş yapın.',
+    zamanasimi: 'Belirlenen süre boyunca işlem yapılmadığı için oturumunuz güvenlik amacıyla kapatıldı. Lütfen tekrar giriş yapın.',
     cikis: 'Oturumunuz kapatıldı.'
   };
   const neden = parametreler.get('neden');
