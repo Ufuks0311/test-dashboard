@@ -48,6 +48,26 @@
     .ay-bos { color:#8b949e; font-size:.85rem; padding:.5rem 0; }
     .ok-renk { color:#3ecf7a; } .hata-renk { color:#f85149; }
     .ay-alt-baslik { font-size:.85rem; font-weight:600; margin:1.25rem 0 .5rem; }
+    dialog { background:var(--kart); color:var(--metin); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:0; width:95%; max-width:640px; }
+    dialog::backdrop { background:rgba(0,0,0,.6); }
+    .dlg-ic { padding:1.5rem; max-height:85vh; overflow-y:auto; }
+    .dlg-ic h2 { font-size:1.15rem; margin-bottom:1rem; }
+    .sn-form { display:grid; grid-template-columns:1fr 1fr; gap:.8rem 1rem; }
+    .sn-form .tam { grid-column:1 / -1; }
+    .sn-form > div { display:flex; flex-direction:column; gap:.3rem; }
+    .sn-form label { font-size:.78rem; color:#8b949e; }
+    .sn-form input, .sn-form select, .sn-form textarea {
+      background:var(--bg); border:1px solid rgba(255,255,255,.12); color:var(--metin); border-radius:8px;
+      padding:.55rem .7rem; font-size:.9rem; font-family:inherit; width:100%; }
+    .sn-form input:focus, .sn-form select:focus, .sn-form textarea:focus { outline:none; border-color:var(--vurgu); }
+    .sn-form textarea { min-height:70px; resize:vertical; }
+    .dlg-alt { display:flex; justify-content:flex-end; gap:.6rem; margin-top:1.25rem; align-items:center; }
+    .dlg-alt .ay-sonuc { margin-right:auto; }
+    .durum-cip { display:inline-block; font-size:.72rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; white-space:nowrap; }
+    .durum-cip.yesil { color:#3ecf7a; background:rgba(62,207,122,.12); }
+    .durum-cip.sari { color:#e3b341; background:rgba(227,179,65,.14); }
+    .durum-cip.kirmizi { color:#f85149; background:rgba(248,81,73,.12); }
+    .durum-cip.gri { color:#8b949e; background:rgba(139,148,158,.14); }
   </style>
 </head>
 <body>
@@ -142,6 +162,18 @@
           <p class="ay-sonuc" id="bolumSonuc"></p>
         </section>
 
+        <!-- Sunucu Yönetimi -->
+        <section class="ay-kart">
+          <h2>Sunucu Yönetimi</h2>
+          <p class="aciklama">Sunucular sekmesinde gösterilen detaylı sunucu kayıtları. Ekleme ve düzenleme kullanıcı ve admin rolüne açık; silme yalnızca admin'e özeldir.</p>
+          <table class="ay-tablo" id="sunucuTablo">
+            <thead><tr><th>Ad</th><th>Rol</th><th>Durum</th><th>IP</th><th></th></tr></thead>
+            <tbody><tr><td colspan="5" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
+          </table>
+          <button class="ay-btn" id="sunucuYeniBtn" data-log="ozel" style="margin-top:.75rem">+ Yeni Sunucu</button>
+          <p class="ay-sonuc" id="sunucuSonuc"></p>
+        </section>
+
         <!-- Kullanıcı Yetkileri (sadece admin görür/düzenler) -->
         <section class="ay-kart" id="yetkiKart" hidden>
           <h2>Kullanıcı Yetkileri</h2>
@@ -204,6 +236,33 @@
       </div>
     </div>
   </main>
+
+  <!-- Sunucu Ekle / Düzenle -->
+  <dialog id="sunucuDlg">
+    <form class="dlg-ic" id="sunucuForm" novalidate>
+      <h2 id="sunucuFormBaslik">Yeni Sunucu</h2>
+      <div class="sn-form">
+        <div><label for="s_ad">Sunucu adı *</label><input id="s_ad" required maxlength="100" placeholder="ör. DVT-SRV-01"></div>
+        <div><label for="s_durum">Durum *</label><select id="s_durum" required>
+          <option>Çalışıyor</option><option>Bakımda</option><option>Kapalı</option><option>Arızalı</option>
+        </select></div>
+        <div class="tam"><label for="s_rol">Görevi / Rolü *</label><input id="s_rol" required maxlength="150" placeholder="ör. PMS Veritabanı Sunucusu"></div>
+        <div><label for="s_ip">IP adresi</label><input id="s_ip" maxlength="15" placeholder="10.10.1.10"></div>
+        <div><label for="s_os">İşletim sistemi</label><input id="s_os" maxlength="120"></div>
+        <div class="tam"><label for="s_ozellikler">Özellikler (CPU / RAM / Disk)</label><input id="s_ozellikler" maxlength="2000"></div>
+        <div><label for="s_konum">Konum</label><input id="s_konum" maxlength="150" placeholder="ör. Sistem Odası"></div>
+        <div><label for="s_sorumlu">Sorumlu kişi</label><input id="s_sorumlu" maxlength="120"></div>
+        <div><label for="s_yedek">Son yedekleme tarihi</label><input id="s_yedek" type="date"></div>
+        <div class="tam"><label for="s_bakim">İlgili bakım anlaşması</label><select id="s_bakim"><option value="">— Yok —</option></select></div>
+        <div class="tam"><label for="s_notlar">Notlar</label><textarea id="s_notlar" maxlength="4000"></textarea></div>
+      </div>
+      <div class="dlg-alt">
+        <span class="ay-sonuc hata" id="sunucuFormHata"></span>
+        <button type="button" class="ay-btn ikincil" id="sunucuVazgecBtn" data-log="ozel">Vazgeç</button>
+        <button type="submit" class="ay-btn" id="sunucuKaydetBtn" data-log="ozel">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
   <script src="js/log.js"></script>
   <script src="js/app.js"></script>
   <script>
@@ -624,12 +683,110 @@
     }
   });
 
+  // ---- Sunucu Yönetimi (Kaydet çubuğundan bağımsız, anında kaydedilir) ----
+  let sunucular = [], sunucuDuzenlenen = null;
+  const SUNUCU_RENK = { 'Çalışıyor': 'yesil', 'Bakımda': 'sari', 'Kapalı': 'gri', 'Arızalı': 'kirmizi' };
+  const IP_RE_SN = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+  function sunucuMesaj(m, tur) { $('sunucuSonuc').className = 'ay-sonuc ' + (tur || ''); $('sunucuSonuc').textContent = m; }
+
+  async function sunucularYukle() {
+    const [s, a] = await Promise.all([
+      sb.from('sunucu').select('*').order('ad'),
+      sb.from('bakim_anlasma').select('id,sistem').order('sistem')
+    ]);
+    if (s.error) { $('sunucuTablo').querySelector('tbody').innerHTML = '<tr><td colspan="5" style="color:#f85149">Yüklenemedi: ' + kacis(s.error.message) + '</td></tr>'; return; }
+    sunucular = s.data || [];
+    $('s_bakim').innerHTML = '<option value="">— Yok —</option>' + (a.data || []).map(x => '<option value="' + x.id + '">' + kacis(x.sistem) + '</option>').join('');
+    $('sunucuTablo').querySelector('tbody').innerHTML = sunucular.length ? sunucular.map(x =>
+      '<tr><td>' + kacis(x.ad) + '</td><td>' + kacis(x.rol) + '</td>'
+      + '<td><span class="durum-cip ' + (SUNUCU_RENK[x.durum] || 'gri') + '">' + kacis(x.durum) + '</span></td>'
+      + '<td>' + (x.ip_adresi ? kacis(x.ip_adresi) : '–') + '</td>'
+      + '<td style="white-space:nowrap">'
+      + (window.izleyiciMi ? '' : '<button type="button" class="ay-btn ikincil" style="padding:.25rem .55rem;font-size:.78rem" data-log="ozel" data-sunucu-duzenle="' + x.id + '">Düzenle</button> ')
+      + (window.kullaniciAdmin ? '<button type="button" class="ay-btn ikincil" style="padding:.25rem .55rem;font-size:.78rem;color:#f85149" data-log="ozel" data-sunucu-sil="' + x.id + '">Sil</button>' : '')
+      + '</td></tr>'
+    ).join('') : '<tr><td colspan="5" style="color:#8b949e">Henüz sunucu kaydı yok.</td></tr>';
+  }
+
+  function sunucuFormAc(s) {
+    sunucuDuzenlenen = s || null;
+    $('sunucuFormBaslik').textContent = s ? 'Sunucuyu Düzenle — ' + s.ad : 'Yeni Sunucu';
+    $('sunucuFormHata').textContent = '';
+    $('s_ad').value = s ? s.ad : '';
+    $('s_durum').value = s ? s.durum : 'Çalışıyor';
+    $('s_rol').value = s ? s.rol : '';
+    $('s_ip').value = s && s.ip_adresi ? s.ip_adresi : '';
+    $('s_os').value = s && s.isletim_sistemi ? s.isletim_sistemi : '';
+    $('s_ozellikler').value = s && s.ozellikler ? s.ozellikler : '';
+    $('s_konum').value = s && s.konum ? s.konum : '';
+    $('s_sorumlu').value = s && s.sorumlu_kisi ? s.sorumlu_kisi : '';
+    $('s_yedek').value = s && s.son_yedekleme_tarihi ? s.son_yedekleme_tarihi : '';
+    $('s_bakim').value = s && s.bakim_anlasma_id ? s.bakim_anlasma_id : '';
+    $('s_notlar').value = s && s.notlar ? s.notlar : '';
+    $('sunucuDlg').showModal();
+    $('s_ad').focus();
+  }
+  $('sunucuYeniBtn').addEventListener('click', () => sunucuFormAc(null));
+  $('sunucuVazgecBtn').addEventListener('click', () => $('sunucuDlg').close());
+
+  $('sunucuTablo').addEventListener('click', e => {
+    const duz = e.target.closest('button[data-sunucu-duzenle]'), sil = e.target.closest('button[data-sunucu-sil]');
+    if (duz) {
+      const s = sunucular.find(x => x.id === Number(duz.dataset.sunucuDuzenle));
+      if (s) sunucuFormAc(s);
+    } else if (sil) {
+      const s = sunucular.find(x => x.id === Number(sil.dataset.sunucuSil));
+      if (!s) return;
+      if (!confirm('"' + s.ad + '" sunucu kaydı silinsin mi?')) return;
+      sb.from('sunucu').delete().eq('id', s.id).then(({ error }) => {
+        if (error) { sunucuMesaj('Silinemedi: ' + error.message, 'hata'); return; }
+        sunucuMesaj('"' + s.ad + '" silindi.', 'ok');
+        log('Sunucu silindi', s.ad);
+        sunucularYukle();
+      });
+    }
+  });
+
+  $('sunucuForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('sunucuFormHata').textContent = '';
+    const veri = {
+      ad: $('s_ad').value.trim(), durum: $('s_durum').value, rol: $('s_rol').value.trim(),
+      ip_adresi: $('s_ip').value.trim() || null, isletim_sistemi: $('s_os').value.trim() || null,
+      ozellikler: $('s_ozellikler').value.trim() || null, konum: $('s_konum').value.trim() || null,
+      sorumlu_kisi: $('s_sorumlu').value.trim() || null, son_yedekleme_tarihi: $('s_yedek').value || null,
+      bakim_anlasma_id: $('s_bakim').value ? Number($('s_bakim').value) : null,
+      notlar: $('s_notlar').value.trim() || null
+    };
+    if (!veri.ad || !veri.rol) { $('sunucuFormHata').textContent = 'Sunucu adı ve görevi zorunlu.'; return; }
+    if (veri.ip_adresi && !IP_RE_SN.test(veri.ip_adresi)) { $('sunucuFormHata').textContent = 'IP adresi geçersiz (ör. 10.10.1.10).'; return; }
+    $('sunucuKaydetBtn').disabled = true; $('sunucuKaydetBtn').textContent = 'Kaydediliyor…';
+    try {
+      if (sunucuDuzenlenen) {
+        const { error } = await sb.from('sunucu').update(veri).eq('id', sunucuDuzenlenen.id);
+        if (error) throw error;
+        log('Sunucu güncellendi', veri.ad);
+      } else {
+        const { error } = await sb.from('sunucu').insert(veri);
+        if (error) throw error;
+        log('Sunucu eklendi', veri.ad);
+      }
+      $('sunucuDlg').close();
+      sunucularYukle();
+    } catch (err) {
+      $('sunucuFormHata').textContent = 'Kaydedilemedi: ' + (/type inet/i.test(err.message) ? 'IP adresi geçersiz.' : err.message);
+    } finally {
+      $('sunucuKaydetBtn').disabled = false; $('sunucuKaydetBtn').textContent = 'Kaydet';
+    }
+  });
+
   window.yetkiHazir.then(rol => {
-    yukle(); turlarYukle(); bolumlerYukle();
+    yukle(); turlarYukle(); bolumlerYukle(); sunucularYukle();
     if (rol === 'admin') { $('yetkiKart').hidden = false; yetkiTablosuYukle(); }
     if (rol === 'izleyici') {
       document.querySelectorAll('#icerik input, #icerik select, #icerik textarea, #icerik button').forEach(el => el.disabled = true);
       $('kaydetDurum').textContent = 'İzleyici rolündesiniz; ayarlar salt okunur.';
+      $('sunucuYeniBtn').hidden = true;
     }
   });
   </script>

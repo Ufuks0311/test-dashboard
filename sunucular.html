@@ -7,6 +7,16 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/auth.js"></script>
+  <style>
+    .sunucu-listesi li { align-items:flex-start; }
+    .sunucu-listesi .nokta { margin-top:.3rem; flex-shrink:0; }
+    .sunucu-bilgi { flex:1; }
+    .sunucu-ad { font-weight:600; }
+    .sunucu-rol { color:#8b949e; font-size:.85rem; }
+    .sunucu-detay { color:#8b949e; font-size:.8rem; margin-top:.25rem; }
+    .sunucu-detay .kirmizi { color:#f85149; }
+    .sunucu-detay .sari { color:#e3b341; }
+  </style>
 </head>
 <body>
   <header>
@@ -19,15 +29,52 @@
     <span id="saat" class="saat"></span>
   </header>
   <main>
-    <ul class="sunucu-listesi">
-      <li><span class="nokta"></span> web-01</li>
-      <li><span class="nokta"></span> db-01</li>
-      <li><span class="nokta"></span> mail-01</li>
-      <li><span class="nokta"></span> backup-01</li>
+    <ul class="sunucu-listesi" id="sunucuListe">
+      <li style="color:#8b949e">Yükleniyor…</li>
     </ul>
     <button id="yenile">Durumu Yenile</button>
   </main>
   <script src="js/log.js"></script>
   <script src="js/app.js"></script>
+  <script>
+  const sb = window.sb; // ortak oturum istemcisi (js/auth.js)
+  const $ = id => document.getElementById(id);
+  const log = (o, d) => { if (window.logYaz) logYaz(o, d); };
+  function kacis(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  const RENK = { 'Çalışıyor': 'var(--yesil)', 'Bakımda': '#e3b341', 'Kapalı': '#8b949e', 'Arızalı': '#f85149' };
+  const DURUM_SINIF = { 'Bakımda': 'sari', 'Arızalı': 'kirmizi' };
+  const tarih = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('tr-TR') : null;
+
+  async function sunucuGetir() {
+    const liste = $('sunucuListe');
+    const { data, error } = await sb.from('sunucu').select('*').order('ad');
+    if (error) { liste.innerHTML = '<li style="color:#f85149">Sunucular yüklenemedi: ' + kacis(error.message) + '</li>'; return; }
+    if (!data.length) {
+      liste.innerHTML = '<li style="color:#8b949e">Henüz sunucu kaydı yok. <a href="ayarlar.html" style="color:var(--vurgu)">Ayarlar → Sunucu Yönetimi</a> bölümünden ekleyebilirsiniz.</li>';
+      return;
+    }
+    liste.innerHTML = data.map(s => {
+      const parcalar = [];
+      if (s.ip_adresi) parcalar.push(kacis(s.ip_adresi));
+      const durumSinif = DURUM_SINIF[s.durum] || '';
+      parcalar.push('<span class="' + durumSinif + '">' + kacis(s.durum) + '</span>');
+      const yedek = tarih(s.son_yedekleme_tarihi);
+      if (yedek) parcalar.push('Son yedek: ' + yedek);
+      if (s.sorumlu_kisi) parcalar.push('Sorumlu: ' + kacis(s.sorumlu_kisi));
+      return '<li><span class="nokta" style="background:' + (RENK[s.durum] || '#8b949e') + '"></span>'
+        + '<div class="sunucu-bilgi"><div class="sunucu-ad">' + kacis(s.ad) + ' <span class="sunucu-rol">— ' + kacis(s.rol) + '</span></div>'
+        + '<div class="sunucu-detay">' + parcalar.join(' · ') + '</div></div></li>';
+    }).join('');
+  }
+
+  $('yenile').addEventListener('click', async () => {
+    await sunucuGetir();
+    log('Durum yenilendi', 'Sunucu listesi veritabanından yeniden yüklendi');
+  });
+
+  window.oturumHazir.then(sunucuGetir);
+  </script>
 </body>
 </html>

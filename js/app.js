@@ -6,19 +6,6 @@ function saatiGuncelle() {
 setInterval(saatiGuncelle, 1000);
 saatiGuncelle();
 
-// Durum yenileme: noktaları rastgele yeşil/kırmızı yap ve sonucu günlüğe yaz
-document.getElementById('yenile')?.addEventListener('click', () => {
-  const noktalar = document.querySelectorAll('.nokta');
-  if (!noktalar.length) return;
-  const arizali = [];
-  noktalar.forEach(n => {
-    const calisiyor = Math.random() > 0.3;
-    n.style.background = calisiyor ? 'var(--yesil)' : '#e04848';
-    if (!calisiyor) arizali.push(n.parentElement.textContent.trim());
-  });
-  if (window.logYaz) logYaz('Durum yenilendi', arizali.length ? 'Arızalı: ' + arizali.join(', ') : 'Tüm sunucular çalışıyor');
-});
-
 // Aktif kullanıcı sayısını 1 dakikada bir 1-100 arası rastgele güncelle
 function kullaniciSayisiniGuncelle() {
   const el = document.getElementById('aktif-kullanici');
