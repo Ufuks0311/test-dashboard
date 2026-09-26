@@ -170,7 +170,7 @@
           <h2>Sunucu Yönetimi</h2>
           <p class="aciklama">Sunucular sekmesinde gösterilen detaylı sunucu kayıtları. Ekleme ve düzenleme kullanıcı ve admin rolüne açık; silme yalnızca admin'e özeldir.</p>
           <div class="ay-tablo-kap"><table class="ay-tablo" id="sunucuTablo">
-            <thead><tr><th>Ad</th><th>IP</th><th>Durum</th><th>Rol</th><th></th></tr></thead>
+            <thead><tr><th>Ad</th><th>IP</th><th>Durum</th><th></th><th>Rol</th></tr></thead>
             <tbody><tr><td colspan="5" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
           </table></div>
           <button class="ay-btn" id="sunucuYeniBtn" data-log="ozel" style="margin-top:.75rem">+ Yeni Sunucu</button>
@@ -703,11 +703,11 @@
     $('sunucuTablo').querySelector('tbody').innerHTML = sunucular.length ? sunucular.map(x =>
       '<tr><td>' + kacis(x.ad) + '</td><td>' + (x.ip_adresi ? kacis(x.ip_adresi) : '–') + '</td>'
       + '<td><span class="durum-cip ' + (SUNUCU_RENK[x.durum] || 'gri') + '">' + kacis(x.durum) + '</span></td>'
-      + '<td class="kisit" title="' + kacis(x.rol) + '">' + kacis(x.rol) + '</td>'
       + '<td class="aksiyon">'
       + (window.izleyiciMi ? '' : '<button type="button" class="ay-btn ikincil" style="padding:.25rem .55rem;font-size:.78rem" data-log="ozel" data-sunucu-duzenle="' + x.id + '">Düzenle</button> ')
       + (window.kullaniciAdmin ? '<button type="button" class="ay-btn ikincil" style="padding:.25rem .55rem;font-size:.78rem;color:#f85149" data-log="ozel" data-sunucu-sil="' + x.id + '">Sil</button>' : '')
-      + '</td></tr>'
+      + '</td>'
+      + '<td class="kisit" title="' + kacis(x.rol) + '">' + kacis(x.rol) + '</td></tr>'
     ).join('') : '<tr><td colspan="5" style="color:#8b949e">Henüz sunucu kaydı yok.</td></tr>';
   }
 
