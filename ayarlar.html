@@ -69,7 +69,7 @@
     .durum-cip.kirmizi { color:#f85149; background:rgba(248,81,73,.12); }
     .durum-cip.gri { color:#8b949e; background:rgba(139,148,158,.14); }
     .ay-tablo-kap { overflow-x:auto; margin-bottom:.5rem; }
-    .ay-tablo td.kisit { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ay-tablo td.kisit { max-width:440px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ay-tablo td.aksiyon { white-space:nowrap; }
   </style>
 </head>
@@ -170,7 +170,7 @@
           <h2>Sunucu Yönetimi</h2>
           <p class="aciklama">Sunucular sekmesinde gösterilen detaylı sunucu kayıtları. Ekleme ve düzenleme kullanıcı ve admin rolüne açık; silme yalnızca admin'e özeldir.</p>
           <div class="ay-tablo-kap"><table class="ay-tablo" id="sunucuTablo">
-            <thead><tr><th>Ad</th><th>Rol</th><th>Durum</th><th>IP</th><th></th></tr></thead>
+            <thead><tr><th>Ad</th><th>IP</th><th>Durum</th><th>Rol</th><th></th></tr></thead>
             <tbody><tr><td colspan="5" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
           </table></div>
           <button class="ay-btn" id="sunucuYeniBtn" data-log="ozel" style="margin-top:.75rem">+ Yeni Sunucu</button>
@@ -701,9 +701,9 @@
     sunucular = s.data || [];
     $('s_bakim').innerHTML = '<option value="">— Yok —</option>' + (a.data || []).map(x => '<option value="' + x.id + '">' + kacis(x.sistem) + '</option>').join('');
     $('sunucuTablo').querySelector('tbody').innerHTML = sunucular.length ? sunucular.map(x =>
-      '<tr><td>' + kacis(x.ad) + '</td><td class="kisit" title="' + kacis(x.rol) + '">' + kacis(x.rol) + '</td>'
+      '<tr><td>' + kacis(x.ad) + '</td><td>' + (x.ip_adresi ? kacis(x.ip_adresi) : '–') + '</td>'
       + '<td><span class="durum-cip ' + (SUNUCU_RENK[x.durum] || 'gri') + '">' + kacis(x.durum) + '</span></td>'
-      + '<td>' + (x.ip_adresi ? kacis(x.ip_adresi) : '–') + '</td>'
+      + '<td class="kisit" title="' + kacis(x.rol) + '">' + kacis(x.rol) + '</td>'
       + '<td class="aksiyon">'
       + (window.izleyiciMi ? '' : '<button type="button" class="ay-btn ikincil" style="padding:.25rem .55rem;font-size:.78rem" data-log="ozel" data-sunucu-duzenle="' + x.id + '">Düzenle</button> ')
       + (window.kullaniciAdmin ? '<button type="button" class="ay-btn ikincil" style="padding:.25rem .55rem;font-size:.78rem;color:#f85149" data-log="ozel" data-sunucu-sil="' + x.id + '">Sil</button>' : '')
