@@ -13,7 +13,7 @@ main { padding:2rem; }
 .kart { background:var(--kart); padding:1.5rem; border-radius:12px; }
 .kart h2 { font-size:.9rem; opacity:.7; font-weight:500; }
 .deger { font-size:2rem; margin-top:.5rem; color:var(--vurgu); }
-.sunucu-listesi { list-style:none; display:grid; gap:.75rem; margin-bottom:1.5rem; }
+.sunucu-listesi { list-style:none; display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:.75rem; margin-bottom:1.5rem; }
 .sunucu-listesi li { background:var(--kart); padding:1rem; border-radius:8px; display:flex; align-items:center; gap:.75rem; }
 .nokta { width:12px; height:12px; border-radius:50%; background:var(--yesil); }
 button { background:var(--vurgu); color:#001; border:none; padding:.75rem 1.25rem; border-radius:8px; font-size:1rem; cursor:pointer; }
