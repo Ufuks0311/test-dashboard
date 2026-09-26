@@ -31,6 +31,7 @@
       <div class="kart"><h2>Uptime</h2><p class="deger">%99.8</p></div>
       <div class="kart"><h2>Ağ Trafiği</h2><p class="deger">2.4 Gb/s</p></div>
       <div class="kart"><h2>Wi-Fi freknası</h2><p class="deger">5 Ghz</p></div>
+      <div class="kart"><h2>Sunucular</h2><p class="deger" id="sunucuSayisi">–</p><p class="alt-durum" id="sunucuDurum"></p></div>
       <div class="kart"><h2>Bakım Anlaşmaları</h2><p class="deger" id="bakimSayisi">–</p><p class="alt-durum" id="bakimDurum"></p></div>
       <div class="kart"><h2>Envanter Listesi</h2><p class="deger" id="envanterSayisi">–</p><p class="alt-durum" id="envanterDurum"></p></div>
     </section>
@@ -49,6 +50,22 @@
       if (data && data.bakim_uyari_gun) uyariGun = data.bakim_uyari_gun;
     } catch (e) {}
     const kalanGun = tarih => tarih ? Math.round((new Date(tarih + 'T00:00:00') - bugun) / 86400000) : null;
+
+    // Sunucular
+    try {
+      const { data, error } = await sb.from('sunucu').select('durum');
+      if (error) throw error;
+      const arizali = data.filter(s => s.durum === 'Arızalı').length;
+      const bakimda = data.filter(s => s.durum === 'Bakımda').length;
+      document.getElementById('sunucuSayisi').textContent = data.length;
+      const durum = document.getElementById('sunucuDurum');
+      if (arizali) { durum.textContent = arizali + ' arızalı'; durum.className = 'alt-durum kirmizi'; }
+      else if (bakimda) { durum.textContent = bakimda + ' bakımda'; durum.className = 'alt-durum dikkat'; }
+      else { durum.textContent = 'Tümü çalışıyor'; durum.className = 'alt-durum yesil'; }
+    } catch (e) {
+      document.getElementById('sunucuSayisi').textContent = '–';
+      document.getElementById('sunucuDurum').textContent = 'Yüklenemedi';
+    }
 
     // Bakım Anlaşmaları
     try {
