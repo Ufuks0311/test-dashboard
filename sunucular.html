@@ -26,6 +26,8 @@
     .ag-cip { display:inline-block; font-size:.72rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; white-space:nowrap; }
     .ag-cip.yesil { color:#3ecf7a; background:rgba(62,207,122,.12); }
     .ag-cip.gri { color:#8b949e; background:rgba(139,148,158,.14); }
+    .ag-rdp-btn { font-size:.75rem; font-weight:600; padding:.25rem .6rem; border-radius:6px; border:1px solid var(--vurgu); color:var(--vurgu); background:transparent; cursor:pointer; }
+    .ag-rdp-btn:hover { background:var(--vurgu); color:#0b1220; }
   </style>
 </head>
 <body>
@@ -47,7 +49,7 @@
     <h2 class="ag-baslik">Ağ Taraması — Görülen Cihazlar</h2>
     <div class="ag-tablo-kap">
       <table class="ag-tablo">
-        <thead><tr><th>#</th><th>IP Adresi</th><th>MAC Adresi</th><th>Hostname</th><th>Tarayan Makine</th><th>Son Görülme</th><th>Durum</th></tr></thead>
+        <thead><tr><th>#</th><th>IP Adresi</th><th>MAC Adresi</th><th>Hostname</th><th>Son Görülme</th><th>Durum</th><th>RDP</th></tr></thead>
         <tbody id="agTablo"><tr><td colspan="7" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
       </table>
     </div>
@@ -113,14 +115,31 @@
     const esikMs = esikDk * 60000;
     tbody.innerHTML = data.map((d, i) => {
       const aktif = (Date.now() - new Date(d.son_gorulme).getTime()) <= esikMs;
+      const rdpGoster = !!(d.hostname && aktif && d.ip_adresi);
       return '<tr><td>' + (i + 1) + '</td><td class="mono">' + (d.ip_adresi ? kacis(d.ip_adresi) : '–') + '</td>'
         + '<td class="mono">' + kacis(d.mac_adresi) + '</td>'
         + '<td>' + (d.hostname ? kacis(d.hostname) : '–') + '</td>'
-        + '<td>' + (d.tarayan_makine ? kacis(d.tarayan_makine) : '–') + '</td>'
         + '<td>' + kacis(goreliZaman(d.son_gorulme)) + '</td>'
-        + '<td><span class="ag-cip ' + (aktif ? 'yesil' : 'gri') + '">' + (aktif ? 'Aktif' : 'Çevrimdışı') + '</span></td></tr>';
+        + '<td><span class="ag-cip ' + (aktif ? 'yesil' : 'gri') + '">' + (aktif ? 'Aktif' : 'Çevrimdışı') + '</span></td>'
+        + '<td>' + (rdpGoster ? '<button type="button" class="ag-rdp-btn" data-log="ozel" data-rdp-ip="' + kacis(d.ip_adresi) + '" data-rdp-ad="' + kacis(d.hostname) + '">RDP</button>' : '–') + '</td></tr>';
     }).join('');
   }
+
+  // ---- RDP: tıklanınca .rdp dosyası indirir; çift tıklayınca Uzak Masaüstü Bağlantısı'nı açar ----
+  function rdpBaslat(ip, ad) {
+    const icerik = 'full address:s:' + ip + '\r\nprompt for credentials:i:1\r\n';
+    const blob = new Blob([icerik], { type: 'application/rdp' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = (ad || ip).replace(/[^a-zA-Z0-9.-]/g, '_') + '.rdp';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    log('RDP dosyası indirildi', (ad ? ad + ' — ' : '') + ip);
+  }
+  $('agTablo').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-rdp-ip]');
+    if (btn) rdpBaslat(btn.dataset.rdpIp, btn.dataset.rdpAd);
+  });
 
   window.oturumHazir.then(sunucuGetir);
   window.oturumHazir.then(agTaramasiGetir);
