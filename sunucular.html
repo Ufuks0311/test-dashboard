@@ -49,8 +49,8 @@
     <h2 class="ag-baslik">Ağ Taraması — Görülen Cihazlar</h2>
     <div class="ag-tablo-kap">
       <table class="ag-tablo">
-        <thead><tr><th>#</th><th>IP Adresi</th><th>MAC Adresi</th><th>Hostname</th><th>Son Görülme</th><th>Durum</th><th>RDP</th></tr></thead>
-        <tbody id="agTablo"><tr><td colspan="7" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
+        <thead><tr><th>#</th><th>IP Adresi</th><th>MAC Adresi</th><th>Hostname</th><th>İşletim Sistemi (tahmini)</th><th>Son Görülme</th><th>Durum</th><th>RDP</th></tr></thead>
+        <tbody id="agTablo"><tr><td colspan="8" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
       </table>
     </div>
   </main>
@@ -110,8 +110,8 @@
       if (data && data.ag_tarama_araligi_dk) esikDk = data.ag_tarama_araligi_dk * 4;
     } catch (e) {}
     const { data, error } = await sb.from('ag_taramasi').select('*').order('ip_adresi', { ascending: true });
-    if (error) { tbody.innerHTML = '<tr><td colspan="7" style="color:#f85149">Yüklenemedi: ' + kacis(error.message) + '</td></tr>'; return; }
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="color:#8b949e">Henüz tarama verisi yok. Ağ tarama ajanının çalıştığından emin olun.</td></tr>'; return; }
+    if (error) { tbody.innerHTML = '<tr><td colspan="8" style="color:#f85149">Yüklenemedi: ' + kacis(error.message) + '</td></tr>'; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="color:#8b949e">Henüz tarama verisi yok. Ağ tarama ajanının çalıştığından emin olun.</td></tr>'; return; }
     const esikMs = esikDk * 60000;
     tbody.innerHTML = data.map((d, i) => {
       const aktif = (Date.now() - new Date(d.son_gorulme).getTime()) <= esikMs;
@@ -119,6 +119,7 @@
       return '<tr><td>' + (i + 1) + '</td><td class="mono">' + (d.ip_adresi ? kacis(d.ip_adresi) : '–') + '</td>'
         + '<td class="mono">' + kacis(d.mac_adresi) + '</td>'
         + '<td>' + (d.hostname ? kacis(d.hostname) : '–') + '</td>'
+        + '<td>' + (d.isletim_sistemi_tahmini ? kacis(d.isletim_sistemi_tahmini) : '–') + '</td>'
         + '<td>' + kacis(goreliZaman(d.son_gorulme)) + '</td>'
         + '<td><span class="ag-cip ' + (aktif ? 'yesil' : 'gri') + '">' + (aktif ? 'Aktif' : 'Çevrimdışı') + '</span></td>'
         + '<td>' + (rdpGoster ? '<button type="button" class="ag-rdp-btn" data-log="ozel" data-rdp-ip="' + kacis(d.ip_adresi) + '" data-rdp-ad="' + kacis(d.hostname) + '">RDP</button>' : '–') + '</td></tr>';
