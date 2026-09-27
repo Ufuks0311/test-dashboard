@@ -16,6 +16,16 @@
     .sunucu-detay { color:#8b949e; font-size:.8rem; margin-top:.25rem; }
     .sunucu-detay .kirmizi { color:#f85149; }
     .sunucu-detay .sari { color:#e3b341; }
+    .ag-baslik { font-size:1rem; font-weight:600; margin:2rem 0 .9rem; }
+    .ag-tablo-kap { overflow-x:auto; background:var(--kart); border-radius:12px; }
+    .ag-tablo { width:100%; border-collapse:collapse; font-size:.88rem; }
+    .ag-tablo th, .ag-tablo td { padding:.65rem .9rem; text-align:left; border-bottom:1px solid rgba(255,255,255,.06); }
+    .ag-tablo th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:#8b949e; font-weight:600; white-space:nowrap; }
+    .ag-tablo td.mono { font-family:ui-monospace,Menlo,monospace; font-size:.85rem; }
+    .ag-tablo tbody tr:hover { background:rgba(255,255,255,.03); }
+    .ag-cip { display:inline-block; font-size:.72rem; font-weight:600; padding:.15rem .5rem; border-radius:999px; white-space:nowrap; }
+    .ag-cip.yesil { color:#3ecf7a; background:rgba(62,207,122,.12); }
+    .ag-cip.gri { color:#8b949e; background:rgba(139,148,158,.14); }
   </style>
 </head>
 <body>
@@ -33,6 +43,14 @@
       <li style="color:#8b949e">Yükleniyor…</li>
     </ul>
     <button id="yenile">Durumu Yenile</button>
+
+    <h2 class="ag-baslik">Ağ Taraması — Görülen Cihazlar</h2>
+    <div class="ag-tablo-kap">
+      <table class="ag-tablo">
+        <thead><tr><th>IP Adresi</th><th>MAC Adresi</th><th>Hostname</th><th>Tarayan Makine</th><th>Son Görülme</th><th>Durum</th></tr></thead>
+        <tbody id="agTablo"><tr><td colspan="6" style="color:#8b949e">Yükleniyor…</td></tr></tbody>
+      </table>
+    </div>
   </main>
   <script src="js/log.js"></script>
   <script src="js/app.js"></script>
@@ -70,11 +88,43 @@
   }
 
   $('yenile').addEventListener('click', async () => {
-    await sunucuGetir();
-    log('Durum yenilendi', 'Sunucu listesi veritabanından yeniden yüklendi');
+    await Promise.all([sunucuGetir(), agTaramasiGetir()]);
+    log('Durum yenilendi', 'Sunucu listesi ve ağ taraması yeniden yüklendi');
   });
 
+  // ---- Ağ taraması: son görülme > 2x tarama aralığı ise "Çevrimdışı" sayılır ----
+  function goreliZaman(iso) {
+    const fark = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (fark < 60) return 'az önce';
+    if (fark < 3600) return Math.floor(fark / 60) + ' dakika önce';
+    if (fark < 86400) return Math.floor(fark / 3600) + ' saat önce';
+    return Math.floor(fark / 86400) + ' gün önce';
+  }
+  async function agTaramasiGetir() {
+    const tbody = $('agTablo');
+    let esikDk = 10;
+    try {
+      const { data } = await sb.from('sistem_ayar').select('ag_tarama_araligi_dk').eq('id', 1).maybeSingle();
+      if (data && data.ag_tarama_araligi_dk) esikDk = data.ag_tarama_araligi_dk * 2;
+    } catch (e) {}
+    const { data, error } = await sb.from('ag_taramasi').select('*').order('son_gorulme', { ascending: false });
+    if (error) { tbody.innerHTML = '<tr><td colspan="6" style="color:#f85149">Yüklenemedi: ' + kacis(error.message) + '</td></tr>'; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:#8b949e">Henüz tarama verisi yok. Ağ tarama ajanının çalıştığından emin olun.</td></tr>'; return; }
+    const esikMs = esikDk * 60000;
+    tbody.innerHTML = data.map(d => {
+      const aktif = (Date.now() - new Date(d.son_gorulme).getTime()) <= esikMs;
+      return '<tr><td class="mono">' + (d.ip_adresi ? kacis(d.ip_adresi) : '–') + '</td>'
+        + '<td class="mono">' + kacis(d.mac_adresi) + '</td>'
+        + '<td>' + (d.hostname ? kacis(d.hostname) : '–') + '</td>'
+        + '<td>' + (d.tarayan_makine ? kacis(d.tarayan_makine) : '–') + '</td>'
+        + '<td>' + kacis(goreliZaman(d.son_gorulme)) + '</td>'
+        + '<td><span class="ag-cip ' + (aktif ? 'yesil' : 'gri') + '">' + (aktif ? 'Aktif' : 'Çevrimdışı') + '</span></td></tr>';
+    }).join('');
+  }
+
   window.oturumHazir.then(sunucuGetir);
+  window.oturumHazir.then(agTaramasiGetir);
+  setInterval(agTaramasiGetir, 30000); // ağ taraması listesi 30 sn'de bir kendiliğinden tazelenir
   </script>
 </body>
 </html>

@@ -139,6 +139,11 @@
             <input id="uyariGun" type="number" min="1" max="365" step="1">
             <span class="ipucu">Bakım Anlaşmaları'nda bitişe bu kadar gün kala sarı uyarı gösterilir.</span>
           </div>
+          <div class="ay-alan">
+            <label for="agTarama">Ağ tarama aralığı (dakika)</label>
+            <input id="agTarama" type="number" min="1" max="1440" step="1">
+            <span class="ipucu">Ağ tarama ajanı, Sunucular sekmesindeki cihaz listesini bu sıklıkla günceller. Değişiklik, ajanın bir sonraki döngüsünde devreye girer.</span>
+          </div>
         </section>
 
         <!-- Cihaz türleri -->
@@ -314,6 +319,7 @@
     $('saatSec').value = kayitli.s.hatirlatma_saati;
     $('oturum').value = kayitli.s.oturum_suresi_dk;
     $('uyariGun').value = kayitli.s.bakim_uyari_gun;
+    $('agTarama').value = kayitli.s.ag_tarama_araligi_dk;
     $('aliciHata').textContent = '';
     degisiklikKontrol();
   }
@@ -365,7 +371,7 @@
   }
   function formDegerleri() {
     const esik = esikleriOku();
-    const oturum = parseInt($('oturum').value, 10), uyari = parseInt($('uyariGun').value, 10);
+    const oturum = parseInt($('oturum').value, 10), uyari = parseInt($('uyariGun').value, 10), agTarama = parseInt($('agTarama').value, 10);
     const hatalar = [];
     if (!alicilar.length) hatalar.push('En az bir alıcı e-postası gerekli.');
     const gAd = $('gonderenAd').value.trim().replace(/[<>"]/g, ''), gEposta = $('gonderenEposta').value.trim().toLowerCase();
@@ -377,13 +383,15 @@
     if (esik.hata) hatalar.push(esik.hata);
     if (!(oturum >= 2 && oturum <= 120)) hatalar.push('Otomatik çıkış süresi 2–120 dakika olmalı.');
     if (!(uyari >= 1 && uyari <= 365)) hatalar.push('Uyarı günü 1–365 arası olmalı.');
+    if (!(agTarama >= 1 && agTarama <= 1440)) hatalar.push('Ağ tarama aralığı 1–1440 dakika arası olmalı.');
     $('esikler').classList.toggle('hatali', !!esik.hata);
     $('oturum').classList.toggle('hatali', !(oturum >= 2 && oturum <= 120));
     $('uyariGun').classList.toggle('hatali', !(uyari >= 1 && uyari <= 365));
+    $('agTarama').classList.toggle('hatali', !(agTarama >= 1 && agTarama <= 1440));
     return {
       hatalar,
       h: { alicilar: [...alicilar], aktif: $('aktif').checked, esikler: esik.deger || kayitli.h.esikler, gonderen },
-      s: { hatirlatma_saati: parseInt($('saatSec').value, 10), oturum_suresi_dk: oturum, bakim_uyari_gun: uyari }
+      s: { hatirlatma_saati: parseInt($('saatSec').value, 10), oturum_suresi_dk: oturum, bakim_uyari_gun: uyari, ag_tarama_araligi_dk: agTarama }
     };
   }
 
@@ -397,6 +405,7 @@
     if (f.s.hatirlatma_saati !== kayitli.s.hatirlatma_saati) d.push('Gönderim saati: ' + kayitli.s.hatirlatma_saati + ':00 → ' + f.s.hatirlatma_saati + ':00');
     if (f.s.oturum_suresi_dk !== kayitli.s.oturum_suresi_dk) d.push('Otomatik çıkış: ' + kayitli.s.oturum_suresi_dk + ' → ' + f.s.oturum_suresi_dk + ' dk');
     if (f.s.bakim_uyari_gun !== kayitli.s.bakim_uyari_gun) d.push('Uyarı günü: ' + kayitli.s.bakim_uyari_gun + ' → ' + f.s.bakim_uyari_gun);
+    if (f.s.ag_tarama_araligi_dk !== kayitli.s.ag_tarama_araligi_dk) d.push('Ağ tarama aralığı: ' + kayitli.s.ag_tarama_araligi_dk + ' → ' + f.s.ag_tarama_araligi_dk + ' dk');
     return d;
   }
 
@@ -413,7 +422,7 @@
     $('testBtn').disabled = !!d.length; // test, kayıtlı ayarlarla çalışır
     $('testBtn').title = d.length ? 'Önce değişiklikleri kaydedin' : '';
   }
-  ['gonderenAd', 'gonderenEposta', 'aktif', 'esikler', 'saatSec', 'oturum', 'uyariGun'].forEach(id => {
+  ['gonderenAd', 'gonderenEposta', 'aktif', 'esikler', 'saatSec', 'oturum', 'uyariGun', 'agTarama'].forEach(id => {
     $(id).addEventListener('input', degisiklikKontrol);
     $(id).addEventListener('change', degisiklikKontrol);
   });
@@ -435,7 +444,7 @@
     $('kaydetBtn').disabled = true; $('kaydetBtn').textContent = 'Kaydediliyor…';
     try {
       const hDegisti = !ESIT(f.h, { alicilar: kayitli.h.alicilar, aktif: kayitli.h.aktif, esikler: kayitli.h.esikler, gonderen: kayitli.h.gonderen });
-      const sDegisti = !ESIT(f.s, { hatirlatma_saati: kayitli.s.hatirlatma_saati, oturum_suresi_dk: kayitli.s.oturum_suresi_dk, bakim_uyari_gun: kayitli.s.bakim_uyari_gun });
+      const sDegisti = !ESIT(f.s, { hatirlatma_saati: kayitli.s.hatirlatma_saati, oturum_suresi_dk: kayitli.s.oturum_suresi_dk, bakim_uyari_gun: kayitli.s.bakim_uyari_gun, ag_tarama_araligi_dk: kayitli.s.ag_tarama_araligi_dk });
       if (hDegisti) {
         const r = await sb.from('hatirlatma_ayar').update(f.h).eq('id', 1).select().single();
         if (r.error) throw r.error;
