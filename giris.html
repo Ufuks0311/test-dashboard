@@ -60,7 +60,7 @@
   const IZINLI_HEDEFLER = ['index.html', 'sunucular.html', 'subnet.html', 'kayitlar.html', 'bakim.html', 'envanter.html', 'ayarlar.html'];
   const parametreler = new URLSearchParams(location.search);
   const istenen = parametreler.get('next');
-  const hedef = IZINLI_HEDEFLER.includes(istenen) ? istenen : 'index.html';
+  const hedef = 'index.html'; // Giriş sonrası her zaman Genel Bakış'a gidilir
   const $ = id => document.getElementById(id);
 
   const NEDENLER = {
